@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  /* Colores */
+  --color-primary-light: #2B50EC;
+  --color-primary-dark: #527BFF;
+
+  --color-secondary-light: #059669;
+  --color-secondary-dark: #10B981;
+
+  --color-accent-light: #EA580C;
+  --color-accent-dark: #F97316;
+
+  --color-destructive-light: #EF4444;
+  --color-destructive-dark: #F87171;
+
+  /* Fondos */
+  --color-background-light: #F3F4F6; /* Cuerpo */
+  --color-background-dark: #111827; /* Cuerpo */
+
+  --color-background-card-light: #FFFFFF; /* Tarjetas y modales */
+  --color-background-card-dark: #1F2937; /* Tarjetas y modales */
+
+  /* Texto */
+  --color-text-primary-light: #1F2937;
+  --color-text-primary-dark: #E5E7EB;
+
+  --color-text-secondary-light: #6B7280;
+  --color-text-secondary-dark: #9CA3AF;
+
+  /* Bordes y Entradas */
+  --color-border-light: #D1D5DB;
+  --color-border-dark: #4B5563;
+
+  --color-input-light: #F9FAFB;
+  --color-input-dark: #374151;
+
+  /* Sidebar */
+  --color-sidebar-background: hsl(247 66% 55%);
+  --color-sidebar-active: hsl(247 60% 48%);
+  --color-sidebar-hover: hsl(247 60% 50%);
+
+  /* Fuentes */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}

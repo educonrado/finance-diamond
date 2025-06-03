@@ -1,0 +1,169 @@
+<template>
+  <div class="flex h-screen">
+    <div
+      v-if="isMobileMenuOpen && isMobile"
+      @click="closeMobileMenu"
+      class="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+    ></div>
+
+    <aside
+      :class="{
+        'w-64': !isSidebarCollapsed,
+        'w-20': isSidebarCollapsed,
+        'translate-x-0': isMobileMenuOpen, // Cuando el menú móvil está abierto
+        '-translate-x-full': !isMobileMenuOpen && isMobile, // Cuando el menú móvil está cerrado Y es móvil
+      }"
+      class="fixed inset-y-0 left-0 bg-sidebar-background transition-all duration-300 ease-in-out z-40 md:static md:translate-x-0"
+    >
+      <div class="p-4 flex items-center justify-between h-16">
+        <h1 v-if="!isSidebarCollapsed" class="text-white text-2xl font-bold">
+          FinanceDiamond
+        </h1>
+        </div>
+      <nav class="mt-8">
+        <router-link
+          v-for="link in navLinks"
+          :key="link.name"
+          :to="link.path"
+          active-class="bg-sidebar-active"
+          class="flex items-center p-4 text-white hover:bg-sidebar-hover transition-colors duration-200"
+          @click="closeMobileMenu"
+        >
+          <component :is="link.icon" class="w-6 h-6 mr-4" />
+          <span v-if="!isSidebarCollapsed">{{ link.name }}</span>
+        </router-link>
+      </nav>
+    </aside>
+
+    <div
+      :class="{
+        'md:ml-64': !isSidebarCollapsed,
+        'md:ml-20': isSidebarCollapsed,
+        'ml-0': isMobile, // En móvil no hay margen izquierdo por la sidebar
+      }"
+      class="flex-1 overflow-auto transition-all duration-300 ease-in-out p-6"
+    >
+      <header class="flex items-center justify-between mb-6">
+        <button
+          @click="toggleMobileMenu"
+          class="p-2 text-text-primary-light dark:text-text-primary-dark md:hidden"
+        >
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"
+            ></path>
+          </svg>
+        </button>
+
+        <h2
+          class="text-3xl font-semibold text-text-primary-light dark:text-text-primary-dark"
+        >
+          {{ currentRouteName }}
+        </h2>
+
+        <button
+          @click="toggleSidebar"
+          class="hidden md:block p-2 text-text-secondary-light dark:text-text-secondary-dark"
+        >
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"
+            ></path>
+          </svg>
+        </button>
+      </header>
+      <router-view />
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useRoute } from "vue-router";
+// Importa los componentes de iconos que acabamos de crear
+import DashboardIcon from "../components/icons/DashboardIcon.vue";
+import TransactionsIcon from "../components/icons/TransactionsIcon.vue";
+import CategoriesIcon from "../components/icons/CategoriesIcon.vue";
+import AccountsIcon from "../components/icons/AccountsIcon.vue";
+import SettingsIcon from "../components/icons/SettingsIcon.vue";
+
+const isSidebarCollapsed = ref(false);
+const isMobileMenuOpen = ref(false);
+const isMobile = ref(false); // Determinado por el tamaño de la ventana
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768; // Tailwind's 'md' breakpoint
+  if (!isMobile.value) {
+    isMobileMenuOpen.value = false; // Asegura que el menú móvil esté cerrado en escritorio
+    // isSidebarCollapsed.value = false; // Opcional: Si quieres que el sidebar SIEMPRE esté expandido en desktop al redimensionar
+  } else {
+    // Si es móvil, y el sidebar no está abierto, asegúrate de que esté colapsado
+    // isSidebarCollapsed.value = true; // Si quieres que la sidebar esté colapsada inicialmente en móvil
+  }
+};
+
+onMounted(() => {
+  checkMobile();
+  window.addEventListener("resize", checkMobile);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", checkMobile);
+});
+
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value;
+};
+
+const toggleMobileMenu = () => {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value;
+};
+
+const closeMobileMenu = () => {
+  if (isMobile.value) { // Solo cierra si realmente estamos en móvil
+    isMobileMenuOpen.value = false;
+  }
+};
+
+const route = useRoute();
+const currentRouteName = computed(() => {
+  const nameMap: { [key: string]: string } = {
+    dashboard: "Panel",
+    transactions: "Transacciones",
+    categories: "Categorías",
+    accounts: "Cuentas",
+    settings: "Configuración",
+  };
+  return nameMap[route.name as string] || "FinanceDiamond"; // Default si la ruta no está mapeada
+});
+
+const navLinks = [
+  { name: "Panel", path: "/", icon: DashboardIcon },
+  { name: "Transacciones", path: "/transactions", icon: TransactionsIcon },
+  { name: "Categorías", path: "/categories", icon: CategoriesIcon },
+  { name: "Cuentas", path: "/accounts", icon: AccountsIcon },
+  { name: "Configuración", path: "/settings", icon: SettingsIcon },
+];
+</script>
+
+<style scoped>
+/* Puedes añadir estilos específicos si necesitas */
+</style>
