@@ -31,10 +31,11 @@ const DEFAULT_CATEGORIES: Omit<Category, 'id'>[] = [
   { name: 'Otros Gastos', type: 'Gasto', icon: '➖' },
 ];
 
+// Cuentas por defecto (ahora sin 'type')
 const DEFAULT_ACCOUNTS: Omit<Account, 'id'>[] = [
-  { name: 'Efectivo', type: 'Efectivo', initialBalance: 0, balance: 0 },
-  { name: 'Cuenta de Ahorros', type: 'Cuenta Bancaria', initialBalance: 0, balance: 0 },
-  { name: 'Tarjeta de Crédito', type: 'Tarjeta de Crédito', initialBalance: 0, balance: 0 }
+  { name: 'Efectivo', initialBalance: 0, balance: 0 },
+  { name: 'Cuenta de Ahorros', initialBalance: 0, balance: 0 },
+  { name: 'Tarjeta de Crédito', initialBalance: 0, balance: 0 },
 ];
 
 export function useUserSetup() {

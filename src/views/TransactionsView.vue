@@ -1,35 +1,35 @@
 <!-- src/views/TransactionsView.vue -->
 <template>
-  <div class="transactions-page p-6">
+  <div class="transactions-page py-6 px-4 md:px-6"> <!-- Padding responsivo para el contenedor principal -->
     <!-- Encabezado de la página y botón para añadir transacción -->
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold text-text-primary-light dark:text-text-primary-dark">Transacciones</h1>
+    <div class="flex justify-end items-center mb-6">
       <button
         @click="openTransactionModal()"
         class="px-6 py-3 bg-primary-light dark:bg-primary-dark text-white rounded-lg shadow-md hover:bg-primary-dark dark:hover:bg-primary-light transition-colors duration-200"
       >
-        Añadir Transacción
+        + Añadir
       </button>
     </div>
 
     <!-- Contenedor de la tabla de transacciones -->
-    <div class="bg-background-card-light dark:bg-background-card-dark rounded-lg shadow-md p-6 overflow-x-auto">
+    <div class="bg-background-card-light dark:bg-background-card-dark rounded-lg shadow-md p-4 md:p-6 overflow-x-auto"> <!-- Padding responsivo para la tarjeta de la tabla -->
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-800">
           <tr>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Fecha</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Tipo</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Categoría</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Cuenta</th>
-            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Monto</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Detalles</th>
-            <th scope="col" class="relative px-6 py-3"><span class="sr-only">Acciones</span></th>
+            <th scope="col" class="px-2 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Fecha</th>
+            <th scope="col" class="px-2 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Categoría</th>
+            <th scope="col" class="px-2 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider hidden md:table-cell">Cuenta</th>
+            <th scope="col" class="px-2 py-3 md:px-6 md:py-3 text-right text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Monto</th>
+            <th scope="col" class="px-2 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider hidden md:table-cell">Detalles</th>
+            <th scope="col" class="relative px-2 py-3 md:px-6 md:py-3"><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody class="bg-background-card-light dark:bg-background-card-dark divide-y divide-gray-200 dark:divide-gray-700">
           <tr v-for="transaction in transactions" :key="transaction.id">
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-text-primary-light dark:text-text-primary-dark">{{ formatDate(transaction.date) }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm">
+            <td class="px-2 py-4 md:px-6 md:py-4 text-sm text-text-primary-light dark:text-text-primary-dark">
+              {{ formatDate(transaction.date) }}
+            </td>
+            <td class="px-2 py-4 md:px-6 md:py-4 text-sm text-text-primary-light dark:text-text-primary-dark">
               <span
                 :class="{
                   'text-secondary-light dark:text-secondary-dark': transaction.type === 'Ingreso',
@@ -37,12 +37,12 @@
                 }"
                 class="inline-flex items-center"
               >
-                {{ transaction.type === 'Ingreso' ? '⬆️' : '⬇️' }} {{ transaction.type }}
+                {{ transaction.type === 'Ingreso' ? '▲' : '▼' }}
               </span>
+              {{ getCategoryName(transaction.categoryId) }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-text-primary-light dark:text-text-primary-dark">{{ getCategoryName(transaction.categoryId) }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-text-primary-light dark:text-text-primary-dark">{{ getAccountName(transaction.accountId) }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
+            <td class="px-2 py-4 md:px-6 md:py-4 text-sm text-text-primary-light dark:text-text-primary-dark hidden md:table-cell">{{ getAccountName(transaction.accountId) }}</td>
+            <td class="px-2 py-4 md:px-6 md:py-4 whitespace-nowrap text-right text-sm font-medium"
               :class="{
                 'text-secondary-light dark:text-secondary-dark': transaction.type === 'Ingreso',
                 'text-destructive-light dark:text-destructive-dark': transaction.type === 'Gasto',
@@ -50,9 +50,9 @@
             >
               {{ formatCurrency(transaction.amount) }}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-text-primary-light dark:text-text-primary-dark">{{ transaction.details || '-' }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-              <button @click="openTransactionModal(transaction)" class="text-primary-light dark:text-primary-dark hover:text-primary-dark dark:hover:text-primary-light mr-4">
+            <td class="px-2 py-4 md:px-6 md:py-4 text-sm text-text-primary-light dark:text-text-primary-dark hidden md:table-cell">{{ transaction.details || '-' }}</td>
+            <td class="px-2 py-4 md:px-6 md:py-4 whitespace-nowrap text-right text-sm font-medium">
+              <button @click="openTransactionModal(transaction)" class="text-primary-light dark:text-primary-dark hover:text-primary-dark dark:hover:text-primary-light mr-1 md:mr-4"> <!-- Ajustado margen en móvil -->
                 <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                 <span class="sr-only">Editar</span>
               </button>
@@ -63,7 +63,7 @@
             </td>
           </tr>
           <tr v-if="transactions.length === 0">
-            <td colspan="7" class="px-6 py-4 text-center text-sm text-text-secondary-light dark:text-text-secondary-dark italic">No hay transacciones registradas.</td>
+            <td colspan="6" class="px-6 py-4 text-center text-sm text-text-secondary-light dark:text-text-secondary-dark italic">No hay transacciones registradas.</td>
           </tr>
         </tbody>
       </table>
@@ -232,7 +232,10 @@ const getAccountName = (accountId: string) => {
 const formatDate = (timestamp: Timestamp | Date) => {
   if (!timestamp) return '';
   const date = timestamp instanceof Timestamp ? timestamp.toDate() : new Date(timestamp);
-  return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit' }).format(date);
+  return new Intl.DateTimeFormat('es-ES', { 
+    day: '2-digit', 
+    month: 'short'
+  }).format(date);
 };
 
 // Formatea el monto a formato de moneda '$XX.XX'

@@ -35,18 +35,19 @@ export const useAccountsStore = defineStore('accounts', {
 
     /**
      * Añade una nueva cuenta a Firestore.
-     * @param accountData Datos de la nueva cuenta (sin 'id', pero incluyendo 'name', 'type', 'initialBalance').
+     * @param accountData Datos de la nueva cuenta (sin 'id', sin 'type').
      */
     async addAccount(accountData: Omit<Account, 'id' | 'balance'>) {
       this.isLoading = true;
       this.error = null;
       try {
         const docRef = await addDoc(collection(db, `${USERS_COLLECTION}/${USER_UID}/${ACCOUNTS_COLLECTION}`), {
-          ...accountData,
+          name: accountData.name, // Solo nombre
+          initialBalance: accountData.initialBalance,
           balance: accountData.initialBalance, // El saldo actual inicia igual que el saldo inicial
         });
         // Añade la nueva cuenta al estado local de Pinia
-        this.accounts.push({ id: docRef.id, ...accountData, balance: accountData.initialBalance });
+        this.accounts.push({ id: docRef.id, name: accountData.name, initialBalance: accountData.initialBalance, balance: accountData.initialBalance });
       } catch (err: any) {
         this.error = err.message;
         console.error("Error al añadir cuenta:", err);

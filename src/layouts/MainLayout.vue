@@ -37,11 +37,11 @@
 
     <div
       :class="{
-        'md:ml-64': !isSidebarCollapsed,
-        'md:ml-20': isSidebarCollapsed,
+        'md:ml-10': !isSidebarCollapsed,
+        'md:ml-5': isSidebarCollapsed,
         'ml-0': isMobile, // En móvil no hay margen izquierdo por la sidebar
       }"
-      class="flex-1 overflow-auto transition-all duration-300 ease-in-out p-6"
+      class="flex-1 overflow-auto transition-all duration-300 ease-in-out py-6 px-4 md:px-6 md:ml-0"
     >
       <header class="flex items-center justify-between mb-6">
         <button
