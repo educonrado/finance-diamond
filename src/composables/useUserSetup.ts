@@ -31,13 +31,23 @@ const DEFAULT_CATEGORIES: Omit<Category, 'id'>[] = [
   { name: 'Otros Gastos', type: 'Gasto', icon: '➖' },
 ];
 
-// Cuentas por defecto (ahora sin 'type')
-const DEFAULT_ACCOUNTS: Omit<Account, 'id'>[] = [
-  { name: 'Efectivo', initialBalance: 0, balance: 0 },
-  { name: 'Cuenta de Ahorros', initialBalance: 0, balance: 0 },
-  { name: 'Tarjeta de Crédito', initialBalance: 0, balance: 0 },
+const DEFAULT_ACCOUNT_COLORS = [
+  '#60A5FA',
+  '#34D399',
+  '#FCD34D',
+  '#FB7185',
+  '#A78BFA',
+  '#F472B6',
 ];
 
+export const DEFAULT_ACCOUNTS: Omit<Account, 'id' | 'balance'>[] = [
+  { name: 'Efectivo', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[0] },
+  { name: 'Cuenta de Ahorros', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[1] },
+  { name: 'Tarjeta de Crédito', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[2] },
+  { name: 'Inversiones', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[3] },
+  { name: 'Cuenta Corriente', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[4] },
+  { name: 'Fondo de Emergencia', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[5] },
+];
 export function useUserSetup() {
   const isLoadingSetup = ref(false);
   const errorSetup = ref<string | null>(null);

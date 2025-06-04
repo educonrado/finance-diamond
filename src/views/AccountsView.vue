@@ -2,8 +2,7 @@
 <template>
   <div class="accounts-page py-6 px-4 md:px-6">
     <!-- Encabezado de la página y botón para añadir cuenta -->
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold text-text-primary-light dark:text-text-primary-dark">Cuentas</h1>
+    <div class="flex justify-end items-center mb-6">
       <button
         @click="openAccountModal()"
         class="px-6 py-3 bg-primary-light dark:bg-primary-dark text-white rounded-lg shadow-md hover:bg-primary-dark dark:hover:bg-primary-light transition-colors duration-200"
@@ -12,23 +11,46 @@
       </button>
     </div>
 
+    <!-- Mensaje de éxito como notificación flotante en la esquina superior derecha -->
+    <Transition name="fade-message">
+      <div v-if="successMessage" class="
+        fixed top-20 right-8 z-50
+        bg-white dark:bg-gray-800 text-gray-800 dark:text-white
+        text-sm p-4 rounded-lg shadow-xl
+        opacity-100 transition-opacity duration-500 ease-out
+        max-w-xs flex items-center justify-between space-x-2
+        border border-gray-200 dark:border-gray-700
+        ">
+        <div class="flex items-center space-x-2">
+          <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>{{ successMessage }}</span>
+        </div>
+        <button @click="clearMessages()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    </Transition>
+
     <!-- Contenedor de la tabla de cuentas -->
     <div class="bg-background-card-light dark:bg-background-card-dark rounded-lg shadow-md p-4 md:p-6 overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-800">
           <tr>
             <th scope="col" class="px-2 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Nombre</th>
-            <!-- ELIMINADO: Columna Tipo -->
-            <th scope="col" class="px-2 py-3 md:px-6 md:py-3 text-right text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider hidden md:table-cell">Saldo Inicial</th>
             <th scope="col" class="px-2 py-3 md:px-6 md:py-3 text-right text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Saldo Actual</th>
             <th scope="col" class="relative px-2 py-3 md:px-6 md:py-3"><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody class="bg-background-card-light dark:bg-background-card-dark divide-y divide-gray-200 dark:divide-gray-700">
           <tr v-for="account in accounts" :key="account.id">
-            <td class="px-2 py-4 md:px-6 md:py-4 text-sm font-medium text-text-primary-light dark:text-text-primary-dark">{{ account.name }}</td>
-            <!-- ELIMINADO: Celda Tipo -->
-            <td class="px-2 py-4 md:px-6 md:py-4 whitespace-nowrap text-right text-sm text-text-primary-light dark:text-text-primary-dark hidden md:table-cell">{{ formatCurrency(account.initialBalance) }}</td>
+            <td class="px-2 py-4 md:px-6 md:py-4 text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
+              <span class="inline-block w-3 h-3 rounded-full mr-2" :style="{ backgroundColor: account.color }"></span>
+              {{ account.name }}
+            </td>
             <td class="px-2 py-4 md:px-6 md:py-4 whitespace-nowrap text-right text-sm font-medium text-text-primary-light dark:text-text-primary-dark">{{ formatCurrency(account.balance) }}</td>
             <td class="px-2 py-4 md:px-6 md:py-4 whitespace-nowrap text-right text-sm font-medium">
               <button @click="openAccountModal(account)" class="text-primary-light dark:text-primary-dark hover:text-primary-dark dark:hover:text-primary-light mr-1 md:mr-4">
@@ -41,19 +63,16 @@
               </button>
             </td>
           </tr>
-          <tr v-if="accounts.length === 0">
-            <td colspan="3" class="px-6 py-4 text-center text-sm text-text-secondary-light dark:text-text-secondary-dark italic">No hay cuentas registradas.</td> <!-- CORREGIDO: colspan a 3 -->
+          <tr v-if="accounts.length === 0 && !accountsStore.isLoading">
+            <td colspan="3" class="px-6 py-4 text-center text-sm text-text-secondary-light dark:text-text-secondary-dark italic">No hay cuentas registradas.</td>
           </tr>
         </tbody>
       </table>
+      <LoadingSpinner v-if="accountsStore.isLoading" />
     </div>
 
     <!-- Modal para Añadir/Editar Cuenta -->
     <Modal :is-visible="isModalVisible" :title="currentAccountId ? 'Editar Cuenta' : 'Añadir Cuenta'" @close="closeAccountModal">
-      <!-- Mensajes de notificación dentro del modal -->
-      <div v-if="successMessage" class="p-3 mb-4 rounded-md bg-secondary-light text-white font-medium">
-        {{ successMessage }}
-      </div>
       <div v-if="errorMessage" class="p-3 mb-4 rounded-md bg-destructive-light text-white font-medium">
         {{ errorMessage }}
       </div>
@@ -69,8 +88,9 @@
             placeholder="Ej. Cuenta de Ahorros, Efectivo"
           />
         </div>
-        <!-- ELIMINADO: Campo Tipo de Cuenta (BaseSelect) -->
-        <div class="mb-4">
+        
+        <!-- Saldo Inicial: visible solo al AÑADIR una cuenta -->
+        <div class="mb-4" v-if="!currentAccountId">
           <BaseInput
             id="account-initial-balance"
             label="Saldo Inicial"
@@ -79,18 +99,48 @@
             :required="true"
             step="0.01"
             placeholder="0.00"
-          />
+            suffix="USD"
+          >
+          <template #prefix>
+              <span class="text-gray-500 dark:text-gray-400 sm:text-sm">$</span>
+            </template>
+        </BaseInput>
         </div>
-        <!-- El Saldo Actual no se edita directamente aquí, se actualiza con transacciones -->
-        <div class="mb-6" v-if="currentAccountId">
+        
+        <!--<div class="w-full md:w-1/2 mb-4 md:mb-0">
           <BaseInput
-            id="account-balance"
-            label="Saldo Actual"
+            id="transaction-amount"
+            label="Valor"
             type="number"
-            v-model="accountForm.balance"
-            :disabled="true"
-            placeholder="0.00"
-          />
+            v-model="transactionForm.amount"
+            :required="true"
+            step="0.01"
+            max="9999999.99"
+            placeholder="0,00"
+            suffix="USD"
+          >
+            <template #prefix>
+              <span class="text-gray-500 dark:text-gray-400 sm:text-sm">$</span>
+            </template>
+          </BaseInput>
+        </div> -->
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1">Color</label>
+          <div class="flex flex-wrap gap-2">
+            <div
+              v-for="color in availableColors"
+              :key="color"
+              @click="accountForm.color = color"
+              class="w-8 h-8 rounded-full border-2 cursor-pointer flex items-center justify-center transition-all duration-200"
+              :class="{ 'ring-2 ring-offset-2 ring-primary-light dark:ring-primary-dark': accountForm.color === color }"
+              :style="{ backgroundColor: color, borderColor: color }"
+            >
+              <svg v-if="accountForm.color === color" class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+            </div>
+          </div>
         </div>
 
         <div class="flex justify-end space-x-3">
@@ -128,22 +178,20 @@ import { useAccountsStore } from '../stores/accounts';
 import Modal from '../components/common/Modal.vue';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import BaseInput from '../components/common/BaseInput.vue';
-// BaseSelect ya no es necesario en este componente si no se usa para el tipo de cuenta.
-// Si se usa en otros lugares, la importación puede permanecer, pero no es usada aquí.
-// import BaseSelect from '../components/common/BaseSelect.vue'; 
-import type { Account } from '../types/Account'; // Importa la interfaz de Cuenta
+import LoadingSpinner from '../components/common/LoadingSpinner.vue';
+import type { Account } from '../types/Account';
 
 // --- Stores de Pinia ---
 const accountsStore = useAccountsStore();
 
 // --- Estados del Formulario y Modal ---
 const isModalVisible = ref(false);
-const currentAccountId = ref<string | null>(null); // ID de la cuenta si estamos editando
+const currentAccountId = ref<string | null>(null);
 const accountForm = ref({
   name: '',
-  // ELIMINADO: type: 'Efectivo', // Ya no se necesita el tipo
   initialBalance: 0,
-  balance: 0, // Se inicializará con initialBalance al guardar, o se cargará al editar
+  balance: 0,
+  color: '#60A5FA', // Color por defecto (azul)
 });
 
 const successMessage = ref<string | null>(null);
@@ -157,20 +205,23 @@ const accountToDeleteId = ref<string | null>(null);
 // --- Datos Reactivos del Store ---
 const accounts = computed(() => accountsStore.accounts);
 
-// --- Opciones para el selector de tipo de cuenta (ELIMINADO ya que 'type' se quitó) ---
-// const accountTypes = ref([
-//   'Efectivo',
-//   'Cuenta Bancaria',
-//   'Tarjeta de Crédito',
-//   'Billetera Digital',
-//   'Inversión',
-//   'Otro'
-// ]);
+// --- Colores disponibles para el selector ---
+const availableColors = [
+  '#60A5FA', // blue-400
+  '#34D399', // green-400
+  '#FCD34D', // yellow-300
+  '#FB7185', // rose-400
+  '#A78BFA', // violet-400
+  '#F472B6', // pink-400
+  '#A3A3A3', // gray-400
+  '#F87171', // red-400
+];
 
 // --- Propiedades Computadas para la UI ---
-
-// Formatea el monto a formato de moneda '$XX.XX'
-const formatCurrency = (amount: number) => {
+const formatCurrency = (amount: number | undefined | null) => {
+  if (typeof amount !== 'number' || isNaN(amount)) {
+    return '0.00';
+  }
   return amount.toLocaleString('es-EC', {
     style: 'currency',
     currency: 'USD',
@@ -178,9 +229,7 @@ const formatCurrency = (amount: number) => {
   });
 };
 
-// --- Funciones de Control de Modal y Formulario ---
-
-// Limpia los mensajes de notificación
+// --- Funciones de Control de Mensajes ---
 const clearMessages = () => {
   if (messageTimeout) {
     clearTimeout(messageTimeout);
@@ -189,98 +238,93 @@ const clearMessages = () => {
   errorMessage.value = null;
 };
 
-// Muestra un mensaje de éxito
 const showSuccessMessage = (message: string) => {
   clearMessages();
   successMessage.value = message;
   messageTimeout = setTimeout(() => {
     successMessage.value = null;
-  }, 3000); // Ocultar después de 3 segundos
+  }, 3000);
 };
 
-// Muestra un mensaje de error
 const showErrorMessage = (message: string) => {
   clearMessages();
   errorMessage.value = message;
   messageTimeout = setTimeout(() => {
     errorMessage.value = null;
-  }, 5000); // Ocultar después de 5 segundos
+  }, 5000);
 };
 
-// Abre el modal de cuenta (para añadir o editar)
+// --- Funciones de Control de Modal y Formulario ---
 const openAccountModal = (account?: Account) => {
-  clearMessages(); // Limpia cualquier mensaje anterior
+  clearMessages();
   if (account) {
     currentAccountId.value = account.id;
-    accountForm.value = { ...account }; // Carga todos los campos de la cuenta
+    accountForm.value = { ...account };
   } else {
-    // Resetear formulario para nueva cuenta
     currentAccountId.value = null;
     accountForm.value = {
       name: '',
-      // ELIMINADO: type: 'Efectivo', // Ya no se necesita el tipo
       initialBalance: 0,
-      balance: 0, // Se actualizará al guardar
+      balance: 0,
+      color: availableColors[Math.floor(Math.random() * availableColors.length)],
     };
   }
   isModalVisible.value = true;
 };
 
-// Cierra el modal y resetea el formulario
 const closeAccountModal = () => {
   isModalVisible.value = false;
   currentAccountId.value = null;
-  // Resetear formulario a valores iniciales (para nueva cuenta)
   accountForm.value = {
     name: '',
-    // ELIMINADO: type: 'Efectivo', // Ya no se necesita el tipo
     initialBalance: 0,
     balance: 0,
+    color: availableColors[Math.floor(Math.random() * availableColors.length)],
   };
-  clearMessages(); // Asegura que los mensajes se limpien al cerrar
+  clearMessages();
 };
 
-// Guarda o actualiza una cuenta
 const saveAccount = async () => {
-  clearMessages(); // Limpia mensajes al intentar guardar
+  clearMessages();
 
-  // --- Validación del Formulario ---
   if (!accountForm.value.name.trim()) {
     showErrorMessage('El nombre de la cuenta es obligatorio.');
     return;
   }
-  // ELIMINADO: Validación del tipo de cuenta
-  // if (!accountForm.value.type.trim()) {
-  //   showErrorMessage('El tipo de cuenta es obligatorio.');
-  //   return;
-  // }
-  if (accountForm.value.initialBalance < 0) { // Permitir 0 como saldo inicial
-    showErrorMessage('El saldo inicial no puede ser negativo.');
+  
+  // Solo validar y usar initialBalance si estamos creando una nueva cuenta
+  let parsedInitialBalance = 0;
+  if (!currentAccountId.value) {
+    parsedInitialBalance = parseFloat(accountForm.value.initialBalance.toString());
+    if (isNaN(parsedInitialBalance) || parsedInitialBalance < 0) {
+      showErrorMessage('El saldo inicial debe ser un número válido y no negativo.');
+      return;
+    }
+  }
+
+  if (!accountForm.value.color) {
+    showErrorMessage('Debe seleccionar un color para la cuenta.');
     return;
   }
 
   try {
-    const accountDataToSave = {
-      name: accountForm.value.name,
-      initialBalance: parseFloat(accountForm.value.initialBalance.toFixed(2)), // Asegura 2 decimales
-      // 'balance' no se envía directamente si es una nueva cuenta, el store lo maneja
-      // Si es una edición, 'balance' ya está en accountForm.value y se pasará como parte de Partial<Account>
-    };
-
     if (currentAccountId.value) {
-      // Editar cuenta
-      await accountsStore.updateAccount(currentAccountId.value, accountDataToSave);
+      // Al editar, solo se actualiza el nombre y el color.
+      await accountsStore.updateAccount(currentAccountId.value, {
+        name: accountForm.value.name,
+        color: accountForm.value.color,
+      });
       showSuccessMessage('Cuenta actualizada correctamente.');
     } else {
-      // Añadir nueva cuenta
-      // Para addAccount, solo necesitamos name, initialBalance. Balance se calcula en el store.
+      // Al añadir, se envían todos los datos incluyendo el saldo inicial
       await accountsStore.addAccount({
-        name: accountDataToSave.name,
-        initialBalance: accountDataToSave.initialBalance,
+        name: accountForm.value.name,
+        initialBalance: parsedInitialBalance,
+        color: accountForm.value.color,
       });
       showSuccessMessage('Cuenta guardada correctamente.');
     }
-    closeAccountModal(); // Cierra el modal después de guardar
+    closeAccountModal();
   } catch (error: any) {
     console.error('Error al guardar/actualizar cuenta:', error);
     showErrorMessage(`Error al guardar la cuenta: ${error.message}`);
@@ -288,14 +332,11 @@ const saveAccount = async () => {
 };
 
 // --- Funciones de Eliminación ---
-
-// Muestra el diálogo de confirmación para eliminar
 const confirmDeleteAccount = (id: string) => {
   accountToDeleteId.value = id;
   isConfirmDeleteVisible.value = true;
 };
 
-// Elimina la cuenta después de la confirmación
 const deleteConfirmedAccount = async () => {
   if (accountToDeleteId.value) {
     try {
@@ -303,7 +344,6 @@ const deleteConfirmedAccount = async () => {
       showSuccessMessage('Cuenta eliminada correctamente.');
     } catch (error: any) {
       console.error('Error al eliminar cuenta:', error);
-      // El store ya maneja el mensaje de error si hay transacciones asociadas
       showErrorMessage(`Error al eliminar la cuenta: ${error.message}`);
     } finally {
       isConfirmDeleteVisible.value = false;
@@ -312,19 +352,26 @@ const deleteConfirmedAccount = async () => {
   }
 };
 
-// Cancela la eliminación
 const cancelDeleteAccount = () => {
   isConfirmDeleteVisible.value = false;
   accountToDeleteId.value = null;
 };
 
 // --- Lógica de Inicialización ---
-
 onMounted(async () => {
-  await accountsStore.fetchAccounts(); // Cargar cuentas al inicio
-  // ELIMINADO: Establecer el tipo de cuenta por defecto si no hay ninguna seleccionada
-  // if (!accountForm.value.type && accountTypes.value.length > 0) {
-  //   accountForm.value.type = accountTypes.value[0];
-  // }
+  await accountsStore.fetchAccounts();
 });
 </script>
+
+<style scoped>
+/* Estilos para la transición de la notificación flotante */
+.fade-message-enter-active, .fade-message-leave-active {
+  transition: opacity 0.5s ease-out;
+}
+.fade-message-enter-from, .fade-message-leave-to {
+  opacity: 0;
+}
+.fade-message-enter-to, .fade-message-leave-from {
+  opacity: 1;
+}
+</style>

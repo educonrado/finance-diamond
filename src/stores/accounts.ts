@@ -1,12 +1,10 @@
 // src/stores/accounts.ts
 import { defineStore } from 'pinia';
 import { db } from '../firebase/config';
-import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
-import type { Account } from '../types/Account'; // Importa la interfaz de Cuenta actualizada
-import { USERS_COLLECTION, ACCOUNTS_COLLECTION, TRANSACTIONS_COLLECTION } from '../constants/firestorePaths'; // Importa las constantes de rutas
-
-// Asumimos un user-uid quemado por ahora
-const USER_UID = 'user-uid';
+import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore'; // Importa orderBy
+import type { Account } from '../types/Account';
+import { USERS_COLLECTION, ACCOUNTS_COLLECTION, TRANSACTIONS_COLLECTION } from '../constants/firestorePaths';
+import { USER_UID } from '../composables/useUserSetup';
 
 export const useAccountsStore = defineStore('accounts', {
   state: () => ({
@@ -22,9 +20,24 @@ export const useAccountsStore = defineStore('accounts', {
       this.isLoading = true;
       this.error = null;
       try {
-        const q = collection(db, `${USERS_COLLECTION}/${USER_UID}/${ACCOUNTS_COLLECTION}`);
+        if (!USER_UID) {
+          console.warn('USER_UID no está disponible. No se pueden cargar cuentas.');
+          this.isLoading = false;
+          return;
+        }
+        // MODIFICADO: Añadido orderBy('name', 'asc')
+        const q = query(collection(db, `${USERS_COLLECTION}/${USER_UID}/${ACCOUNTS_COLLECTION}`), orderBy('name', 'asc'));
         const querySnapshot = await getDocs(q);
-        this.accounts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
+        this.accounts = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name,
+            initialBalance: parseFloat(data.initialBalance || 0),
+            balance: parseFloat(data.balance || 0),
+            color: data.color
+          } as Account;
+        });
       } catch (err: any) {
         this.error = err.message;
         console.error("Error al cargar cuentas:", err);
@@ -35,19 +48,23 @@ export const useAccountsStore = defineStore('accounts', {
 
     /**
      * Añade una nueva cuenta a Firestore.
-     * @param accountData Datos de la nueva cuenta (sin 'id', sin 'type').
+     * @param accountData Datos de la nueva cuenta (sin 'id', pero incluyendo 'name', 'type', 'initialBalance').
      */
     async addAccount(accountData: Omit<Account, 'id' | 'balance'>) {
       this.isLoading = true;
       this.error = null;
       try {
+        if (!USER_UID) {
+          throw new Error('USER_UID no está disponible. No se puede añadir cuenta.');
+        }
+        // ASEGURAR que el balance inicial sea un número al guardar
+        const initialBalanceAsNumber = parseFloat(accountData.initialBalance.toString());
         const docRef = await addDoc(collection(db, `${USERS_COLLECTION}/${USER_UID}/${ACCOUNTS_COLLECTION}`), {
-          name: accountData.name, // Solo nombre
-          initialBalance: accountData.initialBalance,
-          balance: accountData.initialBalance, // El saldo actual inicia igual que el saldo inicial
+          ...accountData,
+          balance: initialBalanceAsNumber, // El saldo actual inicia igual que el saldo inicial
         });
         // Añade la nueva cuenta al estado local de Pinia
-        this.accounts.push({ id: docRef.id, name: accountData.name, initialBalance: accountData.initialBalance, balance: accountData.initialBalance });
+        this.accounts.push({ id: docRef.id, ...accountData, balance: initialBalanceAsNumber });
       } catch (err: any) {
         this.error = err.message;
         console.error("Error al añadir cuenta:", err);
@@ -67,16 +84,21 @@ export const useAccountsStore = defineStore('accounts', {
       this.isLoading = true;
       this.error = null;
       try {
+        if (!USER_UID) {
+          throw new Error('USER_UID no está disponible. No se puede actualizar cuenta.');
+        }
         const accountRef = doc(db, `${USERS_COLLECTION}/${USER_UID}/${ACCOUNTS_COLLECTION}`, accountId);
         
         // Si se está actualizando el initialBalance, necesitamos recalcular el balance actual
         if (accountData.initialBalance !== undefined) {
           const currentAccount = this.accounts.find(acc => acc.id === accountId);
           if (currentAccount) {
-            // Diferencia entre el nuevo initialBalance y el viejo
-            const balanceDifference = accountData.initialBalance - currentAccount.initialBalance;
-            // Ajustar el balance actual por esa diferencia
-            accountData.balance = currentAccount.balance + balanceDifference;
+            // ASEGURAR que ambos saldos sean números para el cálculo
+            const oldInitialBalance = parseFloat(currentAccount.initialBalance.toString());
+            const newInitialBalance = parseFloat(accountData.initialBalance.toString());
+            const balanceDifference = newInitialBalance - oldInitialBalance;
+            // Ajustar el balance actual por esa diferencia y asegurar 2 decimales
+            accountData.balance = parseFloat((currentAccount.balance + balanceDifference).toFixed(2));
           }
         }
 
@@ -102,6 +124,9 @@ export const useAccountsStore = defineStore('accounts', {
       this.isLoading = true;
       this.error = null;
       try {
+        if (!USER_UID) {
+          throw new Error('USER_UID no está disponible. No se puede eliminar cuenta.');
+        }
         // Verificar si la cuenta está en uso por alguna transacción
         const q = query(collection(db, `${USERS_COLLECTION}/${USER_UID}/${TRANSACTIONS_COLLECTION}`), where('accountId', '==', accountId));
         const querySnapshot = await getDocs(q);
@@ -128,15 +153,21 @@ export const useAccountsStore = defineStore('accounts', {
      */
     async updateAccountBalance(accountId: string, newBalance: number) {
       try {
+        if (!USER_UID) {
+          console.warn('USER_UID no está disponible. No se puede actualizar el saldo de la cuenta.');
+          return;
+        }
         const accountRef = doc(db, `${USERS_COLLECTION}/${USER_UID}/${ACCOUNTS_COLLECTION}`, accountId);
-        await updateDoc(accountRef, { balance: newBalance });
+        // Asegurar que newBalance sea un número antes de actualizar
+        const balanceToUpdate = parseFloat(newBalance.toFixed(2)); // Asegura 2 decimales y es número
+        await updateDoc(accountRef, { balance: balanceToUpdate });
         const index = this.accounts.findIndex(acc => acc.id === accountId);
         if (index !== -1) {
-          this.accounts[index].balance = newBalance;
+          this.accounts[index].balance = balanceToUpdate;
+          console.log(`Balance for account ${this.accounts[index].name} (${accountId}) updated to: ${balanceToUpdate}`);
         }
       } catch (err: any) {
         console.error("Error al actualizar saldo de cuenta:", err);
-        // No lanzar error aquí, ya que esta acción es interna.
       }
     }
   },

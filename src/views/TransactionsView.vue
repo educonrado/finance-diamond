@@ -1,7 +1,6 @@
 <!-- src/views/TransactionsView.vue -->
 <template>
-  <div class="transactions-page py-6 px-4 md:px-6"> <!-- Padding responsivo para el contenedor principal -->
-    <!-- Encabezado de la página y botón para añadir transacción -->
+  <div class="transactions-page py-6 px-4 md:px-6">
     <div class="flex justify-end items-center mb-6">
       <button
         @click="openTransactionModal()"
@@ -11,8 +10,33 @@
       </button>
     </div>
 
-    <!-- Contenedor de la tabla de transacciones -->
-    <div class="bg-background-card-light dark:bg-background-card-dark rounded-lg shadow-md p-4 md:p-6 overflow-x-auto"> <!-- Padding responsivo para la tarjeta de la tabla -->
+    <!-- Mensaje de éxito como notificación flotante en la esquina superior derecha -->
+    <Transition name="fade-message">
+      <div v-if="successMessage" class="
+        fixed top-20 right-8 z-50
+        bg-white dark:bg-gray-800 text-gray-800 dark:text-white
+        text-sm p-4 rounded-lg shadow-xl
+        opacity-100 transition-opacity duration-500 ease-out
+        max-w-xs flex items-center justify-between space-x-2
+        border border-gray-200 dark:border-gray-700
+        ">
+        <div class="flex items-center space-x-2">
+          <!-- Icono de éxito (checkmark) -->
+          <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>{{ successMessage }}</span>
+        </div>
+        <!-- Botón para cerrar la notificación manualmente -->
+        <button @click="clearMessages()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    </Transition>
+
+    <div class="relative bg-background-card-light dark:bg-background-card-dark rounded-lg shadow-md p-4 md:p-6 overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-800">
           <tr>
@@ -52,7 +76,7 @@
             </td>
             <td class="px-2 py-4 md:px-6 md:py-4 text-sm text-text-primary-light dark:text-text-primary-dark hidden md:table-cell">{{ transaction.details || '-' }}</td>
             <td class="px-2 py-4 md:px-6 md:py-4 whitespace-nowrap text-right text-sm font-medium">
-              <button @click="openTransactionModal(transaction)" class="text-primary-light dark:text-primary-dark hover:text-primary-dark dark:hover:text-primary-light mr-1 md:mr-4"> <!-- Ajustado margen en móvil -->
+              <button @click="openTransactionModal(transaction)" class="text-primary-light dark:text-primary-dark hover:text-primary-dark dark:hover:text-primary-light mr-1 md:mr-4">
                 <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                 <span class="sr-only">Editar</span>
               </button>
@@ -62,48 +86,78 @@
               </button>
             </td>
           </tr>
-          <tr v-if="transactions.length === 0">
-            <td colspan="6" class="px-6 py-4 text-center text-sm text-text-secondary-light dark:text-text-secondary-dark italic">No hay transacciones registradas.</td>
+          <tr v-if="transactions.length === 0 && !isLoadingGlobal">
+            <td colspan="4" class="px-6 py-4 text-center text-sm text-text-secondary-light dark:text-text-secondary-dark italic">No hay transacciones registradas.</td>
           </tr>
         </tbody>
       </table>
+
+      <LoadingSpinner v-if="isLoadingGlobal" />
     </div>
 
-    <!-- Modal para Añadir/Editar Transacción -->
     <Modal :is-visible="isModalVisible" :title="currentTransactionId ? 'Editar Transacción' : 'Añadir Transacción'" @close="closeTransactionModal">
-      <!-- Mensajes de notificación dentro del modal -->
-      <div v-if="successMessage" class="p-3 mb-4 rounded-md bg-secondary-light text-white font-medium">
-        {{ successMessage }}
-      </div>
+      <!-- Mensajes de notificación dentro del modal (Solo errorMessage aquí) -->
       <div v-if="errorMessage" class="p-3 mb-4 rounded-md bg-destructive-light text-white font-medium">
         {{ errorMessage }}
       </div>
 
       <form @submit.prevent="saveTransaction">
-        <div class="mb-4">
+        <!-- Nueva fila para Monto y Tipo -->
+        <div class="flex flex-col md:flex-row md:space-x-4 mb-4">
+          <div class="w-full md:w-1/2 mb-4 md:mb-0">
           <BaseInput
-            id="transaction-date"
-            label="Fecha"
-            type="date"
-            v-model="transactionForm.date"
+            id="transaction-amount"
+            label="Valor"
+            type="number"
+            v-model="transactionForm.amount"
             :required="true"
-          />
+            step="0.01"
+            max="9999999.99"
+            placeholder="0,00"
+            suffix="USD"
+          >
+            <template #prefix>
+              <span class="text-gray-500 dark:text-gray-400 sm:text-sm">$</span>
+            </template>
+          </BaseInput>
         </div>
-        <div class="mb-4">
-          <BaseSelect
-            id="transaction-type"
-            label="Tipo"
-            v-model="transactionForm.type"
-            :options="[{ text: 'Ingreso', value: 'Ingreso' }, { text: 'Gasto', value: 'Gasto' }]"
-            :required="true"
-          />
+
+          <div class="w-full md:w-1/2">
+            <!-- Toggle Button Group para Tipo -->
+            <label class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1">Tipo</label>
+            <div class="flex rounded-lg shadow-sm overflow-hidden border border-gray-300 dark:border-gray-600">
+              <button
+                type="button"
+                @click="transactionForm.type = 'Ingreso'"
+                :class="{
+                  'bg-primary-light text-white dark:bg-primary-dark': transactionForm.type === 'Ingreso',
+                  'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600': transactionForm.type !== 'Ingreso'
+                }"
+                class="flex-1 py-2 px-4 text-center font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark focus:ring-opacity-50"
+              >
+                Ingreso
+              </button>
+              <button
+                type="button"
+                @click="transactionForm.type = 'Gasto'"
+                :class="{
+                  'bg-primary-light text-white dark:bg-primary-dark': transactionForm.type === 'Gasto',
+                  'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600': transactionForm.type !== 'Gasto'
+                }"
+                class="flex-1 py-2 px-4 text-center font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark focus:ring-opacity-50"
+              >
+                Gasto
+              </button>
+            </div>
+          </div>
         </div>
+        
         <div class="mb-4">
           <BaseSelect
             id="transaction-category"
             label="Categoría"
             v-model="transactionForm.categoryId"
-            :options="filteredCategories.map(cat => ({ text: cat.name, value: cat.id }))"
+            :options="filteredCategories.map(cat => ({ text: cat.icon +' '+cat.name, value: cat.id }))"
             placeholder="Selecciona una categoría"
             :required="true"
           />
@@ -118,17 +172,6 @@
             :required="true"
           />
         </div>
-        <div class="mb-4">
-          <BaseInput
-            id="transaction-amount"
-            label="Monto"
-            type="number"
-            v-model="transactionForm.amount"
-            :required="true"
-            step="0.01"
-            placeholder="0.00"
-          />
-        </div>
         <div class="mb-6">
           <BaseInput
             id="transaction-details"
@@ -136,6 +179,15 @@
             type="text"
             v-model="transactionForm.details"
             placeholder="Notas sobre la transacción"
+          />
+        </div>
+        <div class="mb-4">
+          <BaseInput
+            id="transaction-date"
+            label="Fecha"
+            type="date"
+            v-model="transactionForm.date"
+            :required="true"
           />
         </div>
         <div class="flex justify-end space-x-3">
@@ -156,7 +208,6 @@
       </form>
     </Modal>
 
-    <!-- Diálogo de Confirmación de Eliminación -->
     <ConfirmDialog
       :is-visible="isConfirmDeleteVisible"
       title="Confirmar Eliminación"
@@ -176,9 +227,9 @@ import Modal from '../components/common/Modal.vue';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import BaseInput from '../components/common/BaseInput.vue';
 import BaseSelect from '../components/common/BaseSelect.vue';
-import type { Transaction } from '../types/Transaction'; // Importa la interfaz de Transacción
-import { Timestamp } from 'firebase/firestore'; // Importa Timestamp de Firebase
-import { USER_UID } from '../composables/useUserSetup'; // Importa el UID quemado
+import LoadingSpinner from '../components/common/LoadingSpinner.vue';
+import type { Transaction } from '../types/Transaction';
+import { Timestamp } from 'firebase/firestore';
 
 // --- Stores de Pinia ---
 const transactionsStore = useTransactionsStore();
@@ -187,58 +238,52 @@ const accountsStore = useAccountsStore();
 
 // --- Estados del Formulario y Modal ---
 const isModalVisible = ref(false);
-const currentTransactionId = ref<string | null>(null); // ID de la transacción si estamos editando
+const currentTransactionId = ref<string | null>(null);
 const transactionForm = ref({
-  date: new Date().toISOString().slice(0, 10), // Fecha actual por defecto (YYYY-MM-DD)
-  description: '',
-  type: 'Gasto' as 'Ingreso' | 'Gasto', // Tipo por defecto
+  date: new Date().toISOString().slice(0, 10),
+  type: 'Ingreso' as 'Ingreso' | 'Gasto',
   categoryId: '',
   accountId: '',
   amount: 0,
-  details: '', // Campo opcional
+  details: '',
 });
 
 const successMessage = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
 let messageTimeout: ReturnType<typeof setTimeout> | null = null;
 
-// --- Estados del Diálogo de Confirmación ---
 const isConfirmDeleteVisible = ref(false);
 const transactionToDeleteId = ref<string | null>(null);
 
-// --- Datos Reactivos de los Stores ---
 const transactions = computed(() => transactionsStore.transactions);
 const categories = computed(() => categoriesStore.categories);
 const accounts = computed(() => accountsStore.accounts);
 
-// --- Propiedades Computadas para la UI ---
+const isLoadingGlobal = computed(() => {
+  return transactionsStore.isLoading || accountsStore.isLoading || categoriesStore.isLoading;
+});
 
-// Filtra las categorías según el tipo de transacción seleccionado
 const filteredCategories = computed(() => {
   return categories.value.filter(cat => cat.type === transactionForm.value.type);
 });
 
-// Obtiene el nombre de la categoría dado su ID
 const getCategoryName = (categoryId: string) => {
   return categories.value.find(c => c.id === categoryId)?.name || 'Categoría desconocida';
 };
 
-// Obtiene el nombre de la cuenta dado su ID
 const getAccountName = (accountId: string) => {
   return accounts.value.find(a => a.id === accountId)?.name || 'Cuenta desconocida';
 };
 
-// Formatea la fecha a 'DD/MM'
 const formatDate = (timestamp: Timestamp | Date) => {
   if (!timestamp) return '';
   const date = timestamp instanceof Timestamp ? timestamp.toDate() : new Date(timestamp);
-  return new Intl.DateTimeFormat('es-ES', { 
-    day: '2-digit', 
+  return new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
     month: 'short'
   }).format(date);
 };
 
-// Formatea el monto a formato de moneda '$XX.XX'
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('es-EC', {
     style: 'currency',
@@ -247,9 +292,6 @@ const formatCurrency = (amount: number) => {
   });
 };
 
-// --- Funciones de Control de Modal y Formulario ---
-
-// Limpia los mensajes de notificación
 const clearMessages = () => {
   if (messageTimeout) {
     clearTimeout(messageTimeout);
@@ -258,40 +300,34 @@ const clearMessages = () => {
   errorMessage.value = null;
 };
 
-// Muestra un mensaje de éxito
 const showSuccessMessage = (message: string) => {
   clearMessages();
   successMessage.value = message;
   messageTimeout = setTimeout(() => {
     successMessage.value = null;
-  }, 3000); // Ocultar después de 3 segundos
+  }, 3000);
 };
 
-// Muestra un mensaje de error
 const showErrorMessage = (message: string) => {
   clearMessages();
   errorMessage.value = message;
   messageTimeout = setTimeout(() => {
     errorMessage.value = null;
-  }, 5000); // Ocultar después de 5 segundos
+  }, 5000);
 };
 
-// Abre el modal de transacción (para añadir o editar)
 const openTransactionModal = (transaction?: Transaction) => {
-  clearMessages(); // Limpia cualquier mensaje anterior
+  clearMessages();
   if (transaction) {
     currentTransactionId.value = transaction.id;
-    // Convertir Timestamp a string 'YYYY-MM-DD' para el input type="date"
     const dateValue = transaction.date instanceof Timestamp
       ? transaction.date.toDate()
       : new Date(transaction.date);
     
-    // Asegurarse de que la fecha sea válida antes de formatear
     const dateString = isNaN(dateValue.getTime()) ? new Date().toISOString().slice(0, 10) : dateValue.toISOString().slice(0, 10);
 
     transactionForm.value = {
       date: dateString,
-      description: transaction.description,
       type: transaction.type,
       categoryId: transaction.categoryId,
       accountId: transaction.accountId,
@@ -299,14 +335,12 @@ const openTransactionModal = (transaction?: Transaction) => {
       details: transaction.details || '',
     };
   } else {
-    // Resetear formulario para nueva transacción
     currentTransactionId.value = null;
     transactionForm.value = {
-      date: new Date().toISOString().slice(0, 10), // Fecha actual por defecto
-      description: '',
-      type: 'Gasto', // Por defecto a Gasto
-      categoryId: filteredCategories.value.length > 0 ? filteredCategories.value[0].id : '', // Primera categoría filtrada
-      accountId: accounts.value.length > 0 ? accounts.value[0].id : '', // Primera cuenta
+      date: new Date().toISOString().slice(0, 10),
+      type: 'Ingreso',
+      categoryId: filteredCategories.value.length > 0 ? filteredCategories.value[0].id : '',
+      accountId: accounts.value.length > 0 ? accounts.value[0].id : '',
       amount: 0,
       details: '',
     };
@@ -314,30 +348,28 @@ const openTransactionModal = (transaction?: Transaction) => {
   isModalVisible.value = true;
 };
 
-// Cierra el modal y resetea el formulario
 const closeTransactionModal = () => {
   isModalVisible.value = false;
   currentTransactionId.value = null;
-  // Resetear formulario a valores iniciales (para nueva transacción)
   transactionForm.value = {
     date: new Date().toISOString().slice(0, 10),
-    description: '',
-    type: 'Gasto',
+    type: 'Ingreso',
     categoryId: '',
     accountId: '',
     amount: 0,
     details: '',
   };
-  clearMessages(); // Asegura que los mensajes se limpien al cerrar
 };
 
-// Guarda o actualiza una transacción
 const saveTransaction = async () => {
-  clearMessages(); // Limpia mensajes al intentar guardar
+  clearMessages();
 
   // --- Validación del Formulario ---
-  if (transactionForm.value.amount <= 0) {
-    showErrorMessage('El monto debe ser mayor que cero.');
+  // Convertir amount a número antes de la validación y toFixed
+  const parsedAmount = parseFloat(transactionForm.value.amount.toString());
+
+  if (isNaN(parsedAmount) || parsedAmount <= 0) {
+    showErrorMessage('El monto debe ser un número válido y mayor que cero.');
     return;
   }
   if (!transactionForm.value.type) {
@@ -354,10 +386,8 @@ const saveTransaction = async () => {
   }
 
   try {
-    // Asegurarse de que transactionForm.value.date es una cadena válida antes de crear el objeto Date
     let dateToParse = transactionForm.value.date;
     if (typeof dateToParse !== 'string' || !dateToParse) {
-      // Si no es una cadena o está vacía, usar la fecha actual como fallback
       dateToParse = new Date().toISOString().slice(0, 10);
       console.warn('transactionForm.value.date era inválido o vacío, usando la fecha actual como predeterminada.');
     }
@@ -370,35 +400,29 @@ const saveTransaction = async () => {
 
     const transactionData = {
       ...transactionForm.value,
-      date: transactionDate, // Pasa el objeto Date
-      amount: parseFloat(transactionForm.value.amount.toFixed(2)), // Asegura 2 decimales
+      date: transactionDate,
+      amount: parseFloat(parsedAmount.toFixed(2)), // Usar parsedAmount aquí
     };
 
     if (currentTransactionId.value) {
-      // Editar transacción
       await transactionsStore.updateTransaction(currentTransactionId.value, transactionData);
       showSuccessMessage('Transacción actualizada correctamente.');
     } else {
-      // Añadir nueva transacción
       await transactionsStore.addTransaction(transactionData);
       showSuccessMessage('Transacción guardada correctamente.');
     }
-    closeTransactionModal(); // Cierra el modal después de guardar
+    closeTransactionModal();
   } catch (error: any) {
     console.error('Error al guardar/actualizar transacción:', error);
     showErrorMessage(`Error al guardar la transacción: ${error.message}`);
   }
 };
 
-// --- Funciones de Eliminación ---
-
-// Muestra el diálogo de confirmación para eliminar
 const confirmDeleteTransaction = (id: string) => {
   transactionToDeleteId.value = id;
   isConfirmDeleteVisible.value = true;
 };
 
-// Elimina la transacción después de la confirmación
 const deleteConfirmedTransaction = async () => {
   if (transactionToDeleteId.value) {
     try {
@@ -414,21 +438,16 @@ const deleteConfirmedTransaction = async () => {
   }
 };
 
-// Cancela la eliminación
 const cancelDeleteTransaction = () => {
   isConfirmDeleteVisible.value = false;
   transactionToDeleteId.value = null;
 };
 
-// --- Lógica de Inicialización ---
-
 onMounted(async () => {
-  // Cargar todas las categorías y cuentas al inicio
   await categoriesStore.fetchCategories();
   await accountsStore.fetchAccounts();
-  await transactionsStore.fetchTransactions(); // Cargar transacciones
+  await transactionsStore.fetchTransactions();
 
-  // Establecer valores por defecto para los selectores si están vacíos
   if (filteredCategories.value.length > 0 && !transactionForm.value.categoryId) {
     transactionForm.value.categoryId = filteredCategories.value[0].id;
   }
@@ -436,15 +455,25 @@ onMounted(async () => {
     transactionForm.value.accountId = accounts.value[0].id;
   }
 });
-
-// Observar cambios en el tipo de transacción para actualizar las categorías filtradas
 watch(() => transactionForm.value.type, (newType) => {
-  // Cuando el tipo cambia, resetea la categoría seleccionada si la actual no es válida para el nuevo tipo
   const currentCategoryIsValid = filteredCategories.value.some(cat => cat.id === transactionForm.value.categoryId);
   if (!currentCategoryIsValid && filteredCategories.value.length > 0) {
-    transactionForm.value.categoryId = filteredCategories.value[0].id; // Selecciona la primera categoría del nuevo tipo
+    transactionForm.value.categoryId = filteredCategories.value[0].id;
   } else if (filteredCategories.value.length === 0) {
-    transactionForm.value.categoryId = ''; // No hay categorías para este tipo
+    transactionForm.value.categoryId = '';
   }
 });
 </script>
+
+<style scoped>
+/* Estilos para la transición de la notificación flotante */
+.fade-message-enter-active, .fade-message-leave-active {
+  transition: opacity 0.5s ease-out;
+}
+.fade-message-enter-from, .fade-message-leave-to {
+  opacity: 0;
+}
+.fade-message-enter-to, .fade-message-leave-from {
+  opacity: 1;
+}
+</style>
