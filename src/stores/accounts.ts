@@ -1,3 +1,4 @@
+//src\stores\accounts.ts
 import { defineStore } from 'pinia'
 import { db } from '../firebase/config'
 import {
@@ -114,17 +115,6 @@ export const useAccountsStore = defineStore('accounts', {
         await waitForAuth()
 
         const accountRef = doc(db, `${USERS_COLLECTION}/${userUid.value}/${ACCOUNTS_COLLECTION}`, accountId)
-
-        if (accountData.initialBalance !== undefined) {
-          const currentAccount = this.accounts.find((acc) => acc.id === accountId)
-          if (currentAccount) {
-            const oldInitialBalance = parseFloat(currentAccount.initialBalance.toString())
-            const newInitialBalance = parseFloat(accountData.initialBalance.toString())
-            const balanceDifference = newInitialBalance - oldInitialBalance
-
-            accountData.balance = parseFloat((currentAccount.balance + balanceDifference).toFixed(2))
-          }
-        }
 
         await updateDoc(accountRef, accountData)
 

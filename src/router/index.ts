@@ -49,6 +49,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/transfers',
+    name: 'transfers',
+    component: () => import('../views/TransfersView.vue'),
+    meta: { 
+      title: 'Transferencias',
+      requiresAuth: true 
+    }
+  },
+  {
     path: '/settings',
     name: 'settings',
     component: () => import('../views/SettingsView.vue'),
