@@ -66,7 +66,7 @@
                 </div>
 
                 <div class="mb-4">
-                    <BaseInput id="transfer-details" label="Detalles (Opcional)" type="text"
+                    <BaseInput id="transfer-details" label="Detalles" type="text"
                         v-model="transferForm.details" placeholder="Ej. Transferencia para ahorros" />
                 </div>
 
@@ -146,12 +146,12 @@
                             </td>
                             <td
                                 class="px-2 py-4 md:px-6 md:py-4 text-xs md:text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
-                                {{accounts.find(acc => acc.id === transfer.fromAccountId)?.name || 'Cuenta Desconocida'
+                                {{accounts.find((acc: Account) => acc.id === transfer.fromAccountId)?.name || 'Cuenta Desconocida'
                                 }}
                             </td>
                             <td
                                 class="px-2 py-4 md:px-6 md:py-4 text-xs md:text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
-                                {{accounts.find(acc => acc.id === transfer.toAccountId)?.name || 'Cuenta Desconocida'
+                                {{accounts.find((acc: Account) => acc.id === transfer.toAccountId)?.name || 'Cuenta Desconocida'
                                 }}
                             </td>
                             <td

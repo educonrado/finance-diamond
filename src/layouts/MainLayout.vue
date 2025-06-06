@@ -164,6 +164,7 @@ import CategoriesIcon from "../components/icons/CategoriesIcon.vue";
 import AccountsIcon from "../components/icons/AccountsIcon.vue";
 import SettingsIcon from "../components/icons/SettingsIcon.vue";
 import { useAuth } from "@/composables/useAuth";
+import TransfersIcon from "@/components/icons/TransfersIcon.vue";
 
 const isSidebarCollapsed = ref(false);
 const isMobileMenuOpen = ref(false);
@@ -223,6 +224,7 @@ const currentRouteName = computed(() => {
     transactions: "Transacciones",
     categories: "Categorías",
     accounts: "Cuentas",
+    transfers: "Transferencias",
     settings: "Configuración",
   };
   return nameMap[route.name as string] || "FinanceDiamond"; // Default si la ruta no está mapeada
@@ -233,6 +235,7 @@ const navLinks = [
   { name: "Transacciones", path: "/transactions", icon: TransactionsIcon },
   { name: "Categorías", path: "/categories", icon: CategoriesIcon },
   { name: "Cuentas", path: "/accounts", icon: AccountsIcon },
+  { name: "Transferencias", path: "/transfers", icon: TransfersIcon },
 ];
 </script>
 
