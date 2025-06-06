@@ -14,11 +14,6 @@ const firebaseConfig = {
 
 if (!firebaseConfig.apiKey) {
   console.error('⚠️ Variables de entorno de Firebase no configuradas. Verifica tu archivo .env')
-  console.log('Variables encontradas:', {
-    apiKey: !!import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: !!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: !!import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  })
 }
 
 const app: FirebaseApp = initializeApp(firebaseConfig);

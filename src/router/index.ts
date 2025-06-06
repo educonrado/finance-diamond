@@ -58,6 +58,15 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/credit-card',
+    name: 'credit-card',
+    component: () => import('../views/CreditCardsView.vue'),
+    meta: { 
+      title: 'Tarjeta de crédito',
+      requiresAuth: false 
+    }
+  },
+  {
     path: '/settings',
     name: 'settings',
     component: () => import('../views/SettingsView.vue'),

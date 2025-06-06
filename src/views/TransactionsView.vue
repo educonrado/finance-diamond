@@ -134,8 +134,8 @@
         <!-- Nueva fila para Monto y Tipo -->
         <div class="flex flex-col md:flex-row md:space-x-4 mb-4">
           <div class="w-full md:w-1/2 mb-4 md:mb-0">
-            <BaseInput id="transaction-amount" label="Valor" type="number" v-model="transactionForm.amount"
-              :required="true" step="0.01" max="9999999.99" placeholder="0,00" suffix="USD">
+            <BaseInput id="transaction-amount" label="Valor" type="number" v-model.number="transactionForm.amount"
+              :required="true" step="0.01" max="9999999.99" placeholder="0.00" suffix="USD">
               <template #prefix>
                 <span class="text-gray-500 dark:text-gray-400 sm:text-sm">$</span>
               </template>
