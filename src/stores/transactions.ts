@@ -13,8 +13,9 @@ import {
 } from 'firebase/firestore'
 import type { Transaction } from '../types/Transaction'
 import { useAccountsStore } from './accounts'
-import { USERS_COLLECTION, TRANSACTIONS_COLLECTION } from '../constants/firestorePaths'
+import { USERS_COLLECTION, TRANSACTIONS_COLLECTION, CREDIT_CARDS_COLLECTION } from '../constants/firestorePaths'
 import { useAuth } from '@/composables/useAuth'
+import { useCreditCardsStore } from './creditCards'
 
 const { userUid, isInitialized } = useAuth()
 
@@ -67,6 +68,7 @@ export const useTransactionsStore = defineStore('transactions', {
       this.isLoading = true
       this.error = null
       const accountsStore = useAccountsStore()
+      const creditCardsStore = useCreditCardsStore()
 
       try {
         await waitForAuth()
@@ -86,6 +88,8 @@ export const useTransactionsStore = defineStore('transactions', {
         this.transactions.unshift(newTransaction)
 
         const account = accountsStore.accounts.find(acc => acc.id === newTransaction.accountId)
+        const creditCard = creditCardsStore.creditCards.find(card => card.id === newTransaction.accountId)
+
         if (account) {
           const newBalance =
             newTransaction.type === 'Ingreso'
@@ -93,7 +97,15 @@ export const useTransactionsStore = defineStore('transactions', {
               : account.balance - newTransaction.amount
 
           await accountsStore.updateAccountBalance(newTransaction.accountId, newBalance)
-        } else {
+        } else if (creditCard) {
+          const newBalance =
+            newTransaction.type === 'Ingreso'
+              ? creditCard.balance + newTransaction.amount
+              : creditCard.balance - newTransaction.amount
+
+          await creditCardsStore.updateCreditCard(newTransaction.accountId, { balance: newBalance });
+        }
+        else {
           throw new Error('Cuenta asociada no encontrada al añadir transacción.')
         }
       } catch (err: any) {
@@ -104,102 +116,123 @@ export const useTransactionsStore = defineStore('transactions', {
         this.isLoading = false
       }
     },
-
-    async updateTransaction(transactionId: string, transactionData: Partial<Omit<Transaction, 'id' | 'date'>> & { date?: Date }) {
-      this.isLoading = true
-      this.error = null
-      const accountsStore = useAccountsStore()
+    async updateTransaction(
+      transactionId: string,
+      transactionData: Partial<Omit<Transaction, 'id' | 'date'>> & { date?: Date }
+    ) {
+      this.isLoading = true;
+      this.error = null;
+      const accountsStore = useAccountsStore();
+      const creditCardsStore = useCreditCardsStore();
 
       try {
-        await waitForAuth()
+        // 1. Busca la transacción original
+        const oldTransaction = this.transactions.find(t => t.id === transactionId);
+        if (!oldTransaction) throw new Error('Transacción no encontrada.');
 
-        const path = `${USERS_COLLECTION}/${userUid.value}/${TRANSACTIONS_COLLECTION}`
-        const oldTransaction = this.transactions.find(t => t.id === transactionId)
-        if (!oldTransaction) throw new Error('Transacción no encontrada para actualizar.')
+        // 2. Revertir el efecto de la transacción anterior
+        const oldAccount = accountsStore.accounts.find(acc => acc.id === oldTransaction.accountId);
+        const oldCreditCard = creditCardsStore.creditCards.find(card => card.id === oldTransaction.accountId);
 
-        const oldAccount = accountsStore.accounts.find(acc => acc.id === oldTransaction.accountId)
         if (oldAccount) {
           const revertedBalance =
             oldTransaction.type === 'Ingreso'
               ? oldAccount.balance - oldTransaction.amount
-              : oldAccount.balance + oldTransaction.amount
-
-          await accountsStore.updateAccountBalance(oldAccount.id, revertedBalance)
+              : oldAccount.balance + oldTransaction.amount;
+          await accountsStore.updateAccountBalance(oldAccount.id, revertedBalance);
+        } else if (oldCreditCard) {
+          const revertedBalance =
+            oldTransaction.type === 'Ingreso'
+              ? oldCreditCard.balance - oldTransaction.amount
+              : oldCreditCard.balance + oldTransaction.amount;
+          await creditCardsStore.updateCreditCard(oldCreditCard.id, { balance: revertedBalance });
         }
 
-        const transactionRef = doc(db, path, transactionId)
-        const firestoreData: any = { ...transactionData }
-        if (transactionData.date) {
-          firestoreData.date = Timestamp.fromDate(transactionData.date)
+        // 3. Actualizar la transacción en Firestore
+        const updatedTransaction = {
+          ...oldTransaction,
+          ...transactionData,
+          date: transactionData.date ? Timestamp.fromDate(transactionData.date) : oldTransaction.date,
+        };
+        const path = `${USERS_COLLECTION}/${userUid.value}/${TRANSACTIONS_COLLECTION}`;
+        const docRef = doc(db, path, transactionId);
+        await updateDoc(docRef, updatedTransaction);
+
+        // 4. Aplicar el efecto de la nueva transacción
+        const targetAccountId = transactionData.accountId || oldTransaction.accountId;
+        const effectiveType = transactionData.type || oldTransaction.type;
+        const effectiveAmount = transactionData.amount ?? oldTransaction.amount;
+
+        const newAccount = accountsStore.accounts.find(acc => acc.id === targetAccountId);
+        const newCreditCard = creditCardsStore.creditCards.find(card => card.id === targetAccountId);
+
+        if (newAccount) {
+          const newBalance =
+            effectiveType === 'Ingreso'
+              ? newAccount.balance + effectiveAmount
+              : newAccount.balance - effectiveAmount;
+          await accountsStore.updateAccountBalance(newAccount.id, newBalance);
+        } else if (newCreditCard) {
+          const newBalance =
+            effectiveType === 'Ingreso'
+              ? newCreditCard.balance + effectiveAmount
+              : newCreditCard.balance - effectiveAmount;
+          await creditCardsStore.updateCreditCard(newCreditCard.id, { balance: newBalance });
+        } else {
+          throw new Error('Nueva cuenta asociada no encontrada.');
         }
 
-        await updateDoc(transactionRef, firestoreData)
+        // 5. Refresca las transacciones locales
+        await this.fetchTransactions();
 
-        const targetAccountId = transactionData.accountId || oldTransaction.accountId
-        const newAccount = accountsStore.accounts.find(acc => acc.id === targetAccountId)
-        if (!newAccount) throw new Error('Nueva cuenta asociada no encontrada.')
-
-        const effectiveAmount = transactionData.amount ?? oldTransaction.amount
-        const effectiveType = transactionData.type ?? oldTransaction.type
-
-        const newBalance =
-          effectiveType === 'Ingreso'
-            ? newAccount.balance + effectiveAmount
-            : newAccount.balance - effectiveAmount
-
-        await accountsStore.updateAccountBalance(newAccount.id, newBalance)
-
-        const index = this.transactions.findIndex(t => t.id === transactionId)
-        if (index !== -1) {
-          this.transactions[index] = {
-            ...this.transactions[index],
-            ...transactionData,
-            id: transactionId,
-            date: transactionData.date || oldTransaction.date,
-          }
-        }
       } catch (err: any) {
-        this.error = err.message
-        console.error('Error al actualizar transacción:', err)
-        throw err
+        this.error = err.message || 'Error al actualizar la transacción.';
       } finally {
-        this.isLoading = false
+        this.isLoading = false;
       }
     },
 
     async deleteTransaction(transactionId: string) {
-      this.isLoading = true
-      this.error = null
-      const accountsStore = useAccountsStore()
+      this.isLoading = true;
+      this.error = null;
+      const accountsStore = useAccountsStore();
+      const creditCardsStore = useCreditCardsStore();
 
       try {
-        await waitForAuth()
+        // 1. Busca la transacción a eliminar
+        const transactionToDelete = this.transactions.find(t => t.id === transactionId);
+        if (!transactionToDelete) throw new Error('Transacción no encontrada.');
 
-        const path = `${USERS_COLLECTION}/${userUid.value}/${TRANSACTIONS_COLLECTION}`
-        const transactionToDelete = this.transactions.find(t => t.id === transactionId)
-        if (!transactionToDelete) throw new Error('Transacción no encontrada para eliminar.')
+        // 2. Revertir el efecto de la transacción
+        const account = accountsStore.accounts.find(acc => acc.id === transactionToDelete.accountId);
+        const creditCard = creditCardsStore.creditCards.find(card => card.id === transactionToDelete.accountId);
 
-        const transactionRef = doc(db, path, transactionId)
-        await deleteDoc(transactionRef)
-
-        this.transactions = this.transactions.filter(t => t.id !== transactionId)
-
-        const account = accountsStore.accounts.find(acc => acc.id === transactionToDelete.accountId)
         if (account) {
           const revertedBalance =
             transactionToDelete.type === 'Ingreso'
               ? account.balance - transactionToDelete.amount
-              : account.balance + transactionToDelete.amount
-
-          await accountsStore.updateAccountBalance(account.id, revertedBalance)
+              : account.balance + transactionToDelete.amount;
+          await accountsStore.updateAccountBalance(account.id, revertedBalance);
+        } else if (creditCard) {
+          const revertedBalance =
+            transactionToDelete.type === 'Ingreso'
+              ? creditCard.balance - transactionToDelete.amount
+              : creditCard.balance + transactionToDelete.amount;
+          await creditCardsStore.updateCreditCard(creditCard.id, { balance: revertedBalance });
         }
+
+        // 3. Eliminar la transacción en Firestore
+        const transaccionRef = doc(db, `${USERS_COLLECTION}/${userUid.value}/${TRANSACTIONS_COLLECTION}`, transactionId);
+        await deleteDoc(transaccionRef);
+
+        // 4. Refresca las transacciones locales
+        await this.fetchTransactions();
+
       } catch (err: any) {
-        this.error = err.message
-        console.error('Error al eliminar transacción:', err)
-        throw err
+        this.error = err.message || 'Error al eliminar la transacción.';
       } finally {
-        this.isLoading = false
+        this.isLoading = false;
       }
     },
-  },
-})
+  }
+});

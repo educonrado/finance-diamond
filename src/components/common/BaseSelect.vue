@@ -5,7 +5,7 @@
       {{ label }}
     </label>
     <div class="mt-1 relative rounded-md shadow-sm">
-      <select
+            <select
         :id="id"
         :value="modelValue"
         @change="updateValue(($event.target as HTMLSelectElement).value)"
@@ -22,9 +22,21 @@
                py-2 px-3 appearance-none pr-8"
       >
         <option v-if="placeholder" value="" disabled>{{ placeholder }}</option>
-        <option v-for="option in options" :key="option.value" :value="option.value">
-          {{ option.text }}
-        </option>
+        <template v-for="option in options" :key="option.value || option.text">
+          <option
+            v-if="!option.isSeparator"
+            :value="option.value"
+          >
+            {{ option.text }}
+          </option>
+          <option
+            v-else
+            disabled
+            class="bg-gray-100 dark:bg-gray-700 text-xs italic"
+          >
+            ── {{ option.text }} ──
+          </option>
+        </template>
       </select>
       <!-- Icono de flecha para el select -->
       <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
@@ -53,7 +65,7 @@ const props = defineProps({
     default: '',
   },
   options: {
-    type: Array as () => Array<{ text: string; value: string | number }>,
+    type: Array as () => Array<{ text: string; value?: string | number; isSeparator?: boolean }>,
     required: true,
   },
   placeholder: {

@@ -1,20 +1,30 @@
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-2 transition-colors duration-200">
-    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-      {{ title }}
-    </h3>
-    
-    <div class="text-2xl font-bold transition-colors duration-200" :class="textColor">
-      {{ value }}
-    </div>
-    
-    <div 
-      v-if="change" 
-      :class="changeColorClass + ' text-sm font-semibold flex items-center gap-1'"
-      :aria-label="changeAriaLabel"
-    >
-      <component :is="changeIcon" v-if="changeIcon" class="w-4 h-4" />
-      {{ change }}
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div class="flex items-center justify-between">
+      <div class="flex-1">
+        <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">{{ title }}</p>
+        
+        <!-- Estado de carga -->
+        <div v-if="loading" class="flex items-center space-x-2">
+          <div class="animate-pulse bg-gray-200 dark:bg-gray-700 rounded h-8 w-24"></div>
+          <div class="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600"></div>
+        </div>
+        
+        <!-- Valor cargado -->
+        <div v-else class="flex items-baseline space-x-2">
+          <span class="text-2xl font-bold" :class="colorClasses">{{ value }}</span>
+          <span v-if="change" class="text-sm font-medium" :class="changeColorClasses">
+            {{ change }}
+          </span>
+        </div>
+      </div>
+      
+      <!-- Icono (opcional) -->
+      <div v-if="!loading" class="ml-4">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center" :class="iconBackgroundClasses">
+          <div class="w-4 h-4 rounded-full" :class="iconClasses"></div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -22,102 +32,54 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-// Iconos opcionales (puedes usar Heroicons, Lucide, etc.)
-// import { ArrowUpIcon, ArrowDownIcon, MinusIcon } from '@heroicons/vue/24/solid'
-
-const props = defineProps<{
+interface Props {
   title: string
-  value: string | number
-  change?: string | number
-  color?: 'green' | 'red' | 'blue' | 'gray' | 'yellow' | 'purple'
-  changeType?: 'positive' | 'negative' | 'neutral' // Alternativa más explícita
-}>()
+  value: string
+  color: 'blue' | 'green' | 'red' | 'gray'
+  change?: string
+  loading?: boolean
+}
 
-const textColor = computed(() => {
-  const colorMap = {
+const props = withDefaults(defineProps<Props>(), {
+  loading: false
+})
+
+const colorClasses = computed(() => {
+  const colors = {
+    blue: 'text-blue-600 dark:text-blue-400',
     green: 'text-green-600 dark:text-green-400',
     red: 'text-red-600 dark:text-red-400',
-    blue: 'text-blue-600 dark:text-blue-400',
-    gray: 'text-gray-600 dark:text-gray-400',
-    yellow: 'text-yellow-600 dark:text-yellow-400',
-    purple: 'text-purple-600 dark:text-purple-400',
+    gray: 'text-gray-600 dark:text-gray-400'
   }
-  return colorMap[props.color || 'gray']
+  return colors[props.color]
 })
 
-// Función más robusta para detectar cambios negativos
-const isNegativeChange = computed(() => {
-  if (props.changeType) {
-    return props.changeType === 'negative'
-  }
-  
-  if (!props.change) return false
-  
-  const changeStr = props.change.toString().trim()
-  
-  // Detectar signo negativo al inicio
-  if (changeStr.startsWith('-')) return true
-  
-  // Detectar palabras clave negativas
-  const negativeKeywords = ['disminución', 'reducción', 'pérdida', 'menos', 'bajó', 'cayó']
-  return negativeKeywords.some(keyword => 
-    changeStr.toLowerCase().includes(keyword)
-  )
-})
-
-const isPositiveChange = computed(() => {
-  if (props.changeType) {
-    return props.changeType === 'positive'
-  }
-  
-  if (!props.change) return false
-  
-  const changeStr = props.change.toString().trim()
-  
-  // Si no es negativo y tiene contenido, asumimos positivo
-  // (a menos que sea explícitamente neutral)
-  return !isNegativeChange.value && changeStr !== '0' && changeStr !== '0%'
-})
-
-const changeColorClass = computed(() => {
-  if (isNegativeChange.value) {
-    return 'text-red-500 dark:text-red-400'
-  } else if (isPositiveChange.value) {
-    return 'text-green-500 dark:text-green-400'
-  } else {
-    return 'text-gray-500 dark:text-gray-400'
-  }
-})
-
-// Iconos condicionales (requiere librería de iconos)
-const changeIcon = computed(() => {
-  // Descomenta si tienes iconos disponibles
-  // if (isNegativeChange.value) return ArrowDownIcon
-  // if (isPositiveChange.value) return ArrowUpIcon
-  // return MinusIcon
-  return null
-})
-
-// Accesibilidad mejorada
-const changeAriaLabel = computed(() => {
+const changeColorClasses = computed(() => {
   if (!props.change) return ''
   
-  const changeStr = props.change.toString()
-  if (isNegativeChange.value) {
-    return `Cambio negativo: ${changeStr}`
-  } else if (isPositiveChange.value) {
-    return `Cambio positivo: ${changeStr}`
-  } else {
-    return `Cambio neutral: ${changeStr}`
-  }
+  const isPositive = props.change.startsWith('+')
+  return isPositive 
+    ? 'text-green-600 dark:text-green-400' 
+    : 'text-red-600 dark:text-red-400'
 })
 
-// Formatear valor si es número
-const formattedValue = computed(() => {
-  if (typeof props.value === 'number') {
-    // Puedes personalizar el formato según tus necesidades
-    return props.value.toLocaleString('es-EC')
+const iconBackgroundClasses = computed(() => {
+  const colors = {
+    blue: 'bg-blue-100 dark:bg-blue-900',
+    green: 'bg-green-100 dark:bg-green-900',
+    red: 'bg-red-100 dark:bg-red-900',
+    gray: 'bg-gray-100 dark:bg-gray-700'
   }
-  return props.value
+  return colors[props.color]
+})
+
+const iconClasses = computed(() => {
+  const colors = {
+    blue: 'bg-blue-600 dark:bg-blue-400',
+    green: 'bg-green-600 dark:bg-green-400',
+    red: 'bg-red-600 dark:bg-red-400',
+    gray: 'bg-gray-600 dark:bg-gray-400'
+  }
+  return colors[props.color]
 })
 </script>

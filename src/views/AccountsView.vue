@@ -9,6 +9,13 @@
       >
         + Añadir
       </button>
+      <button
+        v-if="canShowTransferButton"
+        @click="openTransferModal"
+        class="ml-3 px-6 py-3 bg-secondary-light dark:bg-secondary-dark text-white rounded-lg shadow-md hover:bg-secondary-dark dark:hover:bg-secondary-light transition-colors duration-200"
+      >
+        Mover dinero entre cuentas
+      </button>
     </div>
 
     <!-- Mensaje de éxito como notificación flotante en la esquina superior derecha -->
@@ -76,7 +83,6 @@
       <div v-if="errorMessage" class="p-3 mb-4 rounded-md bg-destructive-light text-white font-medium">
         {{ errorMessage }}
       </div>
-
       <form @submit.prevent="saveAccount">
         <div class="mb-4">
           <BaseInput
@@ -88,8 +94,6 @@
             placeholder="Ej. Cuenta de Ahorros, Efectivo"
           />
         </div>
-        
-        <!-- Saldo Inicial: visible solo al AÑADIR una cuenta -->
         <div class="mb-4" v-if="!currentAccountId">
           <BaseInput
             id="account-initial-balance"
@@ -101,30 +105,11 @@
             placeholder="0.00"
             suffix="USD"
           >
-          <template #prefix>
-              <span class="text-gray-500 dark:text-gray-400 sm:text-sm">$</span>
-            </template>
-        </BaseInput>
-        </div>
-        
-        <!--<div class="w-full md:w-1/2 mb-4 md:mb-0">
-          <BaseInput
-            id="transaction-amount"
-            label="Valor"
-            type="number"
-            v-model="transactionForm.amount"
-            :required="true"
-            step="0.01"
-            max="9999999.99"
-            placeholder="0,00"
-            suffix="USD"
-          >
             <template #prefix>
               <span class="text-gray-500 dark:text-gray-400 sm:text-sm">$</span>
             </template>
           </BaseInput>
-        </div> -->
-
+        </div>
         <div class="mb-4">
           <label class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1">Color</label>
           <div class="flex flex-wrap gap-2">
@@ -142,7 +127,6 @@
             </div>
           </div>
         </div>
-
         <div class="flex justify-end space-x-3">
           <button
             type="button"
@@ -161,6 +145,58 @@
       </form>
     </Modal>
 
+    <!-- Modal para Transferencia entre Cuentas -->
+    <Modal :is-visible="isTransferModalVisible" title="Mover Dinero entre Cuentas" @close="closeTransferModal">
+      <TransferFormModal @success="onTransferSuccess" @close="closeTransferModal" />
+    </Modal>
+
+    <!-- Historial de transferencias internas -->
+    <div class="mt-8">
+      <h3 class="text-lg font-semibold mb-4 text-text-primary-light dark:text-text-primary-dark">Historial de movimientos entre cuentas</h3>
+      <div class="bg-background-card-light dark:bg-background-card-dark rounded-lg shadow-md p-4 md:p-6 overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead class="bg-gray-50 dark:bg-gray-800">
+            <tr>
+              <th class="px-2 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Fecha</th>
+              <th class="px-2 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Origen</th>
+              <th class="px-2 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Destino</th>
+              <th class="px-2 py-3 md:px-6 md:py-3 text-right text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Monto</th>
+              <th class="px-2 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Detalles</th>
+              <th class="px-2 py-3 md:px-6 md:py-3 text-center text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="bg-background-card-light dark:bg-background-card-dark divide-y divide-gray-200 dark:divide-gray-700">
+            <tr v-for="transfer in filteredTransfers" :key="transfer.id">
+              <td class="px-2 py-4 md:px-6 md:py-4 text-sm">{{ formatDate(transfer.date) }}</td>
+              <td class="px-2 py-4 md:px-6 md:py-4 text-sm">
+                {{ getAccountName(transfer.fromAccountId) }}
+              </td>
+              <td class="px-2 py-4 md:px-6 md:py-4 text-sm">
+                {{ getAccountName(transfer.toAccountId) }}
+              </td>
+              <td class="px-2 py-4 md:px-6 md:py-4 text-right text-sm font-medium">{{ formatCurrency(transfer.amount) }}</td>
+              <td class="px-2 py-4 md:px-6 md:py-4 text-sm">{{ transfer.details }}</td>
+              <td class="px-2 py-4 md:px-6 md:py-4 text-center">
+                <button
+                  @click="confirmDeleteTransfer(transfer.id)"
+                  class="text-destructive-light dark:text-destructive-dark hover:text-destructive-dark dark:hover:text-destructive-light"
+                  title="Eliminar transferencia"
+                >
+                  <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </td>
+            </tr>
+            <tr v-if="filteredTransfers.length === 0">
+              <td colspan="6" class="px-6 py-4 text-center text-sm text-text-secondary-light dark:text-text-secondary-dark italic">No hay movimientos registrados.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Diálogo de Confirmación de Eliminación -->
     <ConfirmDialog
       :is-visible="isConfirmDeleteVisible"
@@ -169,20 +205,34 @@
       @confirm="deleteConfirmedAccount"
       @cancel="cancelDeleteAccount"
     />
+    <!-- Diálogo de Confirmación de Eliminación de Transferencia -->
+    <ConfirmDialog
+      :is-visible="isConfirmDeleteTransferVisible"
+      title="Eliminar transferencia"
+      message="¿Seguro que deseas eliminar esta transferencia? Esta acción revertirá los saldos de las cuentas involucradas."
+      @confirm="deleteConfirmedTransfer"
+      @cancel="cancelDeleteTransfer"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useAccountsStore } from '../stores/accounts';
+import { useTransfersStore } from '../stores/transfers';
+import { useCreditCardsStore } from '../stores/creditCards';
 import Modal from '../components/common/Modal.vue';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import BaseInput from '../components/common/BaseInput.vue';
 import LoadingSpinner from '../components/common/LoadingSpinner.vue';
+import TransferFormModal from '../components/common/TransferFormModal.vue';
 import type { Account } from '../types/Account';
+import { Timestamp } from 'firebase/firestore';
 
 // --- Stores de Pinia ---
 const accountsStore = useAccountsStore();
+const transfersStore = useTransfersStore();
+const creditCardsStore = useCreditCardsStore();
 
 // --- Estados del Formulario y Modal ---
 const isModalVisible = ref(false);
@@ -204,8 +254,10 @@ const accountToDeleteId = ref<string | null>(null);
 
 // --- Datos Reactivos del Store ---
 const accounts = computed(() => accountsStore.accounts);
+const creditCards = computed(() => creditCardsStore.creditCards);
+const transfers = computed(() => transfersStore.transfers);
 
-// --- Colores disponibles para el selector ---
+// --- Colores disponibles para el selector (paleta mejorada) ---
 const availableColors = [
   '#60A5FA', // blue-400
   '#34D399', // green-400
@@ -215,7 +267,37 @@ const availableColors = [
   '#F472B6', // pink-400
   '#A3A3A3', // gray-400
   '#F87171', // red-400
+  '#10B981', // emerald-500
+  '#F59E42', // orange-400
+  '#6366F1', // indigo-500
+  '#F43F5E', // pink-600
 ];
+const isConfirmDeleteTransferVisible = ref(false);
+const transferToDeleteId = ref<string | null>(null);
+
+const confirmDeleteTransfer = (id: string) => {
+  transferToDeleteId.value = id;
+  isConfirmDeleteTransferVisible.value = true;
+};
+
+const deleteConfirmedTransfer = async () => {
+  if (transferToDeleteId.value) {
+    try {
+      await transfersStore.deleteTransfer(transferToDeleteId.value);
+      showSuccessMessage('Transferencia eliminada y saldos revertidos correctamente.');
+    } catch (error: any) {
+      showErrorMessage(error.message || 'Error al eliminar la transferencia.');
+    } finally {
+      isConfirmDeleteTransferVisible.value = false;
+      transferToDeleteId.value = null;
+    }
+  }
+};
+
+const cancelDeleteTransfer = () => {
+  isConfirmDeleteTransferVisible.value = false;
+  transferToDeleteId.value = null;
+};
 
 // --- Propiedades Computadas para la UI ---
 const formatCurrency = (amount: number | undefined | null) => {
@@ -227,6 +309,15 @@ const formatCurrency = (amount: number | undefined | null) => {
     currency: 'USD',
     minimumFractionDigits: 2,
   });
+};
+
+const formatDate = (timestamp: Timestamp | Date) => {
+  if (!timestamp) return '';
+  const date = timestamp instanceof Timestamp ? timestamp.toDate() : new Date(timestamp);
+  return new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'short'
+  }).format(date);
 };
 
 // --- Funciones de Control de Mensajes ---
@@ -360,7 +451,42 @@ const cancelDeleteAccount = () => {
 // --- Lógica de Inicialización ---
 onMounted(async () => {
   await accountsStore.fetchAccounts();
+  await creditCardsStore.fetchCreditCards();
+  await transfersStore.fetchTransfers();
 });
+
+// --- Transferencias internas ---
+const isTransferModalVisible = ref(false);
+const canShowTransferButton = computed(() => {
+  // Solo mostrar si hay al menos dos cuentas de dinero disponible (no tarjetas de crédito)
+  // Si tienes un campo type, ajústalo aquí. Por ahora, asume que todas las accounts son válidas.
+  return accounts.value.length >= 2;
+});
+const openTransferModal = () => {
+  isTransferModalVisible.value = true;
+};
+const closeTransferModal = () => {
+  isTransferModalVisible.value = false;
+};
+const onTransferSuccess = () => {
+  closeTransferModal();
+  showSuccessMessage('Transferencia realizada correctamente.');
+};
+
+// --- Historial de transferencias internas ---
+const filteredTransfers = computed(() => {
+  // Solo transferencias internas (tipo "transferencia")
+  // Si tu modelo tiene un campo type, filtra por type === 'transfer'
+  // Por ahora, asume que todas las transferencias en el store son internas
+  return transfers.value;
+});
+
+// --- Utilidad para mostrar nombre de cuenta en historial ---
+const getAccountName = (id: string) => {
+  const allAccounts = [...accounts.value, ...creditCards.value];
+  const found = allAccounts.find(acc => acc.id === id);
+  return found ? found.name : 'Cuenta desconocida';
+};
 </script>
 
 <style scoped>

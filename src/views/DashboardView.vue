@@ -1,5 +1,11 @@
 <template>
   <div class="p-4 md:p-6 space-y-6">
+    <!-- Indicador de carga global -->
+    <div v-if="isLoading" class="fixed top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2">
+      <div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+      <span class="text-sm">Cargando datos...</span>
+    </div>
+
     <!-- Encabezado y Selectores -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Resumen Financiero</h1>
@@ -17,41 +23,92 @@
       </div>
     </div>
 
-    <!-- KPIs -->
+    <!-- KPIs con estados de carga -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <SummaryCard title="Balance Total" :value="formattedBalance" color="blue" />
-      <SummaryCard title="Ingresos del Mes" :value="formattedIncome" color="green" :change="incomeChange" />
-      <SummaryCard title="Gastos del Mes" :value="formattedExpenses" color="red" :change="expenseChange" />
-      <SummaryCard title="Margen Neto" :value="formattedNet" :color="netIsPositive ? 'green' : 'red'" />
+      <SummaryCard 
+        title="Balance Total" 
+        :value="accountsLoaded ? formattedBalance : '--'" 
+        color="blue" 
+        :loading="!accountsLoaded" 
+      />
+      <SummaryCard 
+        title="Ingresos del Mes" 
+        :value="transactionsLoaded ? formattedIncome : '--'" 
+        color="green" 
+        :change="transactionsLoaded ? incomeChange : undefined" 
+        :loading="!transactionsLoaded" 
+      />
+      <SummaryCard 
+        title="Gastos del Mes" 
+        :value="transactionsLoaded ? formattedExpenses : '--'" 
+        color="red" 
+        :change="transactionsLoaded ? expenseChange : undefined" 
+        :loading="!transactionsLoaded" 
+      />
+      <SummaryCard 
+        title="Margen Neto" 
+        :value="transactionsLoaded ? formattedNet : '--'" 
+        :color="transactionsLoaded ? (netIsPositive ? 'green' : 'red') : 'gray'" 
+        :loading="!transactionsLoaded" 
+      />
     </div>
 
-    <!-- Gráficos -->
+    <!-- Gráficos con estados de carga -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Donut Chart -->
       <ChartCard title="Balance por Cuentas">
-        <DonutChart :accounts="accountsStore.accounts" />
+        <div v-if="!accountsLoaded" class="flex items-center justify-center h-64">
+          <div class="text-center">
+            <div class="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-full h-32 w-32 mx-auto mb-4"></div>
+            <p class="text-gray-500 dark:text-gray-400">Cargando cuentas...</p>
+          </div>
+        </div>
+        <DonutChart v-else :accounts="accountsStore.accounts" />
       </ChartCard>
 
-
       <ChartCard title="Ingresos vs Gastos (6 meses)">
-        <LineChart :transactions="transactionsStore.transactions" :selectedMonth="selectedMonth"
-          :selectedYear="selectedYear" />
+        <div v-if="!transactionsLoaded" class="flex items-center justify-center h-64">
+          <div class="text-center">
+            <div class="animate-pulse bg-gray-200 dark:bg-gray-700 rounded h-32 w-full mb-4"></div>
+            <p class="text-gray-500 dark:text-gray-400">Cargando transacciones...</p>
+          </div>
+        </div>
+        <LineChart 
+          v-else 
+          :transactions="transactionsStore.transactions" 
+          :selectedMonth="selectedMonth"
+          :selectedYear="selectedYear" 
+        />
       </ChartCard>
     </div>
 
     <ChartCard title="Categorías con Mayor Gasto">
-      <BarChart :transactions="transactionsStore.transactions" :categories="categoriesStore.categories"
-        :selectedMonth="selectedMonth" :selectedYear="selectedYear" />
+      <div v-if="!transactionsLoaded || !categoriesLoaded" class="flex items-center justify-center h-64">
+        <div class="text-center">
+          <div class="animate-pulse space-y-2">
+            <div class="bg-gray-200 dark:bg-gray-700 rounded h-8 w-full"></div>
+            <div class="bg-gray-200 dark:bg-gray-700 rounded h-6 w-3/4"></div>
+            <div class="bg-gray-200 dark:bg-gray-700 rounded h-4 w-1/2"></div>
+          </div>
+          <p class="text-gray-500 dark:text-gray-400 mt-4">Cargando datos...</p>
+        </div>
+      </div>
+      <BarChart 
+        v-else 
+        :transactions="transactionsStore.transactions" 
+        :categories="categoriesStore.categories"
+        :selectedMonth="selectedMonth" 
+        :selectedYear="selectedYear" 
+      />
     </ChartCard>
 
-
-    <!-- Botones flotantes con menú expandible -->
+    <!-- Botones flotantes - Siempre disponibles -->
     <div class="fixed bottom-6 right-6 flex flex-col items-end gap-3 z-50">
       <!-- Overlay para cerrar menú -->
       <div v-if="isMenuOpen" @click="closeMenu" class="fixed inset-0 bg-black bg-opacity-20 backdrop-blur-sm -z-10"
         aria-hidden="true"></div>
 
-      <!-- Botones secundarios (aparecen cuando está expandido) -->
+      <!-- Botones secundarios -->
       <Transition enter-active-class="transition-all duration-300 ease-out"
         enter-from-class="opacity-0 scale-75 translate-y-4" enter-to-class="opacity-100 scale-100 translate-y-0"
         leave-active-class="transition-all duration-200 ease-in" leave-from-class="opacity-100 scale-100 translate-y-0"
@@ -94,67 +151,69 @@
         isMenuOpen && 'rotate-45'
       ]" :aria-label="isMenuOpen ? 'Cerrar menú de acciones' : 'Abrir menú de acciones rápidas'"
         :aria-expanded="isMenuOpen">
-        <!-- Icono que rota -->
         <svg class="w-6 h-6 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
         </svg>
-
-        <!-- Efecto de ripple -->
         <div
           class="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-200">
         </div>
       </button>
 
-      <!-- Indicador de acceso rápido (opcional) -->
+      <!-- Indicador de acceso rápido -->
       <div v-if="!hasSeenTooltip && !isMenuOpen"
         class="absolute -top-2 -left-20 bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg animate-pulse">
         Acciones rápidas
         <div class="absolute top-1/2 -right-1 transform -translate-y-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
       </div>
     </div>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAccountsStore } from '@/stores/accounts'
-
-// Imports de componentes (crear luego)
-import SummaryCard from '../components/dashboard/SummaryCard.vue';
-import LineChart from '@/components/dashboard/LineChart.vue';
-import BarChart from '@/components/dashboard/BarChart.vue';
+import { useTransactionsStore } from '@/stores/transactions'
+import { useCategoriesStore } from '@/stores/categories'
 import { getMonthlyIncomeAndExpenses } from '@/utils/financeUtils'
 
-import { useTransactionsStore } from '@/stores/transactions'
-import type { Category } from '../types/Category';
-import { useCategoriesStore } from '@/stores/categories';
+// Imports de componentes
+const SummaryCard = defineAsyncComponent(() => import('../components/dashboard/SummaryCard.vue'))
+const LineChart = defineAsyncComponent(() => import('@/components/dashboard/LineChart.vue'))
+const BarChart = defineAsyncComponent(() => import('@/components/dashboard/BarChart.vue'))
+const DonutChart = defineAsyncComponent(() => import('@/components/dashboard/DonutChart.vue'))
+const ChartCard = defineAsyncComponent(() => import('@/components/dashboard/ChartCard.vue'))
+
+// Estados de carga
+const accountsLoaded = ref(false)
+const transactionsLoaded = ref(false)
+const categoriesLoaded = ref(false)
+
+// Computed para indicador de carga general
+const isLoading = computed(() => !accountsLoaded.value || !transactionsLoaded.value || !categoriesLoaded.value)
 
 // Pinia Stores
-const categoriesStore = useCategoriesStore();
-
+const accountsStore = useAccountsStore()
 const transactionsStore = useTransactionsStore()
-await transactionsStore.fetchTransactions()
-
+const categoriesStore = useCategoriesStore()
 
 // Fecha actual
 const now = new Date()
+
 // Estado del menú
 const isMenuOpen = ref(false)
-const hasSeenTooltip = ref(true) // Cambiar a false si quieres mostrar el tooltip
+const hasSeenTooltip = ref(true)
 const selectedMonth = ref(now.getMonth() + 1)
 const selectedYear = ref(now.getFullYear())
 
 // Opciones de selección
-const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+const months = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+]
 const yearOptions = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i)
 
-// Store
-const accountsStore = useAccountsStore()
-await accountsStore.fetchAccounts()
-
-// Valores simulados (próximamente se calcularán desde transacciones)
+// Computeds financieros
 const totalBalance = computed(() =>
   accountsStore.accounts.reduce((sum, acc) => sum + acc.balance, 0)
 )
@@ -184,19 +243,21 @@ const formattedNet = computed(() =>
 
 const netIsPositive = computed(() => monthlyData.value.income - monthlyData.value.expenses >= 0)
 
+// Cambios simulados (podrías calcularlos realmente)
 const incomeChange = '+5.2%'
 const expenseChange = '-3.1%'
 
 // Navegación
 const router = useRouter()
+
 const goToNewTransaction = () => {
   closeMenu()
-  router.push('/transactions/new') // Asumiendo ruta anidada para crear
+  router.push('/transactions')
 }
 
 const goToNewTransfer = () => {
   closeMenu()
-  router.push('/transfers/new') // Asumiendo ruta anidada para crear
+  router.push('/transfers')
 }
 
 // Control del menú
@@ -216,9 +277,32 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 }
 
+// Función para cargar datos de forma asíncrona
+const loadData = async () => {
+  try {
+    // Cargar cuentas
+    await accountsStore.fetchAccounts()
+    accountsLoaded.value = true
+    
+    // Cargar transacciones
+    await transactionsStore.fetchTransactions()
+    transactionsLoaded.value = true
+    
+    // Cargar categorías
+    await categoriesStore.fetchCategories()
+    categoriesLoaded.value = true
+    
+  } catch (error) {
+    console.error('Error cargando datos del dashboard:', error)
+    // Aquí podrías mostrar un toast de error o manejar el error de otra forma
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
+  // Iniciar carga de datos sin bloquear
+  loadData()
 })
 
 onUnmounted(() => {

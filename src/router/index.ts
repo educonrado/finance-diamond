@@ -49,24 +49,6 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
-    path: '/transfers',
-    name: 'transfers',
-    component: () => import('../views/TransfersView.vue'),
-    meta: { 
-      title: 'Transferencias',
-      requiresAuth: true 
-    }
-  },
-  {
-    path: '/credit-card',
-    name: 'credit-card',
-    component: () => import('../views/CreditCardsView.vue'),
-    meta: { 
-      title: 'Tarjeta de crédito',
-      requiresAuth: false 
-    }
-  },
-  {
     path: '/settings',
     name: 'settings',
     component: () => import('../views/SettingsView.vue'),
@@ -75,6 +57,15 @@ const routes: Array<RouteRecordRaw> = [
       requiresAuth: true 
     }
   },
+  {
+      path: '/creditcards',
+      name: 'creditcards',
+      component: () => import('../views/CreditCardsView.vue'),
+      meta: {
+        title: 'Tarjetas de Crédito', 
+        requiresAuth: true 
+      }
+},
   // Ruta comodín para 404
   {
     path: '/:catchAll(.*)',

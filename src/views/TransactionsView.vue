@@ -90,7 +90,10 @@
               class="px-2 py-4 md:px-6 md:py-4 text-sm text-text-primary-light dark:text-text-primary-dark hidden md:table-cell">
               {{ transaction.details || '-' }}</td>
             <td class="px-2 py-4 md:px-6 md:py-4 whitespace-nowrap text-right text-sm font-medium">
-              <button @click="openTransactionModal(transaction)"
+                            <!-- Solo muestra el botón si NO es transacción de tarjeta de crédito -->
+              <button
+                v-if="!isCreditCardTransaction(transaction)"
+                @click="openTransactionModal(transaction)"
                 class="text-primary-light dark:text-primary-dark hover:text-primary-dark dark:hover:text-primary-light mr-1 md:mr-4">
                 <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                   xmlns="http://www.w3.org/2000/svg">
@@ -171,9 +174,14 @@
             placeholder="Selecciona una categoría" :required="true" />
         </div>
         <div class="mb-4">
-          <BaseSelect id="transaction-account" label="Cuenta" v-model="transactionForm.accountId"
-            :options="accounts.map(acc => ({ text: acc.name, value: acc.id }))" placeholder="Selecciona una cuenta"
-            :required="true" />
+          <BaseSelect
+            id="transaction-account"
+            label="Cuenta"
+            v-model="transactionForm.accountId"
+            :options="accountAndCreditCardOptions"
+            placeholder="Selecciona una cuenta o tarjeta"
+            :required="true"
+          />
         </div>
         <div class="mb-6">
           <BaseInput id="transaction-details" label="Detalles (Opcional)" type="text" v-model="transactionForm.details"
@@ -214,10 +222,14 @@ import LoadingSpinner from '../components/common/LoadingSpinner.vue';
 import type { Transaction } from '../types/Transaction';
 import { Timestamp } from 'firebase/firestore';
 import { parseLocalDateString } from '../utils/dateUtils';
+import { useCreditCardsStore } from '../stores/creditCards';
+
 // --- Stores de Pinia ---
 const transactionsStore = useTransactionsStore();
 const categoriesStore = useCategoriesStore();
 const accountsStore = useAccountsStore();
+const creditCardsStore = useCreditCardsStore();
+
 
 // --- Estados del Formulario y Modal ---
 const isModalVisible = ref(false);
@@ -242,6 +254,35 @@ const transactions = computed(() => transactionsStore.transactions);
 const categories = computed(() => categoriesStore.categories);
 const accounts = computed(() => accountsStore.accounts);
 
+const accountAndCreditCardOptions = computed(() => {
+  const normalAccounts = accounts.value.map(acc => ({
+    text: acc.name,
+    value: acc.id,
+    type: 'account'
+  }));
+
+  // Solo mostrar tarjetas de crédito si es NUEVA transacción y tipo Gasto
+  if (!currentTransactionId.value && transactionForm.value.type === 'Gasto') {
+    const creditCards = creditCardsStore.creditCards.map(card => ({
+      text: card.name ? `💳 ${card.name}` : `💳 ${card.cardType}`,
+      value: card.id,
+      icon: '/icons/card.svg',
+      type: 'creditCard'
+    }));
+
+    if (creditCards.length === 0) return normalAccounts;
+
+    return [
+      ...normalAccounts,
+      { isSeparator: true, text: 'Tarjetas de Crédito' },
+      ...creditCards
+    ];
+  }
+
+  // Si es edición o no es gasto, solo cuentas normales
+  return normalAccounts;
+});
+
 const isLoadingGlobal = computed(() => {
   return transactionsStore.isLoading || accountsStore.isLoading || categoriesStore.isLoading;
 });
@@ -255,7 +296,15 @@ const getCategoryName = (categoryId: string) => {
 };
 
 const getAccountName = (accountId: string) => {
-  return accounts.value.find(a => a.id === accountId)?.name || 'Cuenta desconocida';
+  const account = accounts.value.find(a => a.id === accountId);
+  if (account) return account.name;
+  const card = creditCardsStore.creditCards.find(card => card.id === accountId);
+  if (card) return card.name || card.cardType || 'Tarjeta de Crédito';
+  return 'Cuenta desconocida';
+};
+
+const isCreditCardTransaction = (transaction: Transaction) => {
+  return !!creditCardsStore.creditCards.find(card => card.id === transaction.accountId);
 };
 
 const formatDate = (timestamp: Timestamp | Date) => {
@@ -429,6 +478,7 @@ const cancelDeleteTransaction = () => {
 onMounted(async () => {
   await categoriesStore.fetchCategories();
   await accountsStore.fetchAccounts();
+  await creditCardsStore.fetchCreditCards(); 
   await transactionsStore.fetchTransactions();
 
   if (filteredCategories.value.length > 0 && !transactionForm.value.categoryId) {

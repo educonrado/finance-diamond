@@ -19,6 +19,7 @@ import {
 } from "../constants/firestorePaths";
 import { useAuth } from "../composables/useAuth";
 import { useAccountsStore } from "./accounts"; // Importa el store de cuentas
+import { useCreditCardsStore } from './creditCards'
 
 const { userUid, isInitialized } = useAuth();
 
@@ -98,21 +99,22 @@ export const useTransfersStore = defineStore("transfers", {
       this.error = null;
 
       try {
-        await waitForAuth(); // Asegura que el usuario esté autenticado
+        await waitForAuth();
 
-        // Obtenemos una referencia al store de cuentas para actualizar los saldos
         const accountsStore = useAccountsStore();
+        const creditCardsStore = useCreditCardsStore();
 
-        // Validar que las cuentas existan y que la cuenta de origen tenga saldo suficiente
-        const fromAccount = accountsStore.accounts.find(
-          (acc) => acc.id === transferData.fromAccountId
-        );
-        const toAccount = accountsStore.accounts.find(
-          (acc) => acc.id === transferData.toAccountId
-        );
+        // Buscar cuentas de origen y destino en ambos stores
+        const fromAccount = accountsStore.accounts.find(acc => acc.id === transferData.fromAccountId);
+        const toAccount = accountsStore.accounts.find(acc => acc.id === transferData.toAccountId);
+        const toCreditCard = creditCardsStore.creditCards.find(card => card.id === transferData.toAccountId);
 
-        if (!fromAccount || !toAccount) {
-          throw new Error("Una de las cuentas seleccionadas no existe.");
+        // Solo se permite transferir desde cuentas normales
+        if (!fromAccount) {
+          throw new Error("La cuenta de origen no existe.");
+        }
+        if (!toAccount && !toCreditCard) {
+          throw new Error("La cuenta de destino no existe.");
         }
         if (fromAccount.balance < transferData.amount) {
           throw new Error("Saldo insuficiente en la cuenta de origen.");
@@ -134,19 +136,27 @@ export const useTransfersStore = defineStore("transfers", {
         const newFromBalance = parseFloat(
           (fromAccount.balance - transferData.amount).toFixed(2)
         );
-        const newToBalance = parseFloat(
-          (toAccount.balance + transferData.amount).toFixed(2)
-        );
 
-        // Actualiza los saldos en Firebase y en el estado local de accountsStore
         await accountsStore.updateAccountBalance(
           transferData.fromAccountId,
           newFromBalance
         );
-        await accountsStore.updateAccountBalance(
-          transferData.toAccountId,
-          newToBalance
-        );
+
+        if (toAccount) {
+          const newToBalance = parseFloat(
+            (toAccount.balance + transferData.amount).toFixed(2)
+          );
+          await accountsStore.updateAccountBalance(
+            transferData.toAccountId,
+            newToBalance
+          );
+        } else if (toCreditCard) {
+          // Para tarjetas de crédito, el balance suele ser la deuda acumulada
+          await creditCardsStore.updateCreditCard(
+            toCreditCard.id,
+            { balance: (toCreditCard.balance ?? 0) + transferData.amount }
+          );
+        }
 
         // 3. Añadir la transferencia al estado local del store (para que se refleje en la UI)
         // La fecha real se obtiene del servidor, por lo que la simulamos aquí temporalmente
@@ -180,7 +190,7 @@ export const useTransfersStore = defineStore("transfers", {
       try {
         await waitForAuth();
         const accountsStore = useAccountsStore();
-        
+
         // Obtener la transferencia original antes de actualizar para calcular las diferencias
         const originalTransfer = this.transfers.find(t => t.id === transferId);
         if (!originalTransfer) {
@@ -191,18 +201,18 @@ export const useTransfersStore = defineStore("transfers", {
         const transferRef = doc(db, `${USERS_COLLECTION}/${userUid.value}/${TRANSFERS_COLLECTION}`, transferId);
 
         // Convertir la fecha a Date si viene como string (desde el formulario)
-        const dateToSave = updatedData.date instanceof Date 
-                           ? updatedData.date 
-                           : (typeof updatedData.date === 'string' ? new Date(updatedData.date) : originalTransfer.date);
-        
+        const dateToSave = updatedData.date instanceof Date
+          ? updatedData.date
+          : (typeof updatedData.date === 'string' ? new Date(updatedData.date) : originalTransfer.date);
+
         // Asegurar el monto con 2 decimales
-        const amountToSave = typeof updatedData.amount === 'number' 
-                             ? parseFloat(updatedData.amount.toFixed(2)) 
-                             : originalTransfer.amount;
+        const amountToSave = typeof updatedData.amount === 'number'
+          ? parseFloat(updatedData.amount.toFixed(2))
+          : originalTransfer.amount;
 
         // Actualizar la transferencia en Firestore
-        await updateDoc(transferRef, { 
-          ...updatedData, 
+        await updateDoc(transferRef, {
+          ...updatedData,
           date: dateToSave,
           amount: amountToSave
         });
@@ -215,16 +225,16 @@ export const useTransfersStore = defineStore("transfers", {
         const originalToAccount = accountsStore.accounts.find(acc => acc.id === originalTransfer.toAccountId);
 
         if (originalFromAccount) {
-            await accountsStore.updateAccountBalance(
-                originalTransfer.fromAccountId,
-                parseFloat((originalFromAccount.balance + originalTransfer.amount).toFixed(2))
-            );
+          await accountsStore.updateAccountBalance(
+            originalTransfer.fromAccountId,
+            parseFloat((originalFromAccount.balance + originalTransfer.amount).toFixed(2))
+          );
         }
         if (originalToAccount) {
-            await accountsStore.updateAccountBalance(
-                originalTransfer.toAccountId,
-                parseFloat((originalToAccount.balance - originalTransfer.amount).toFixed(2))
-            );
+          await accountsStore.updateAccountBalance(
+            originalTransfer.toAccountId,
+            parseFloat((originalToAccount.balance - originalTransfer.amount).toFixed(2))
+          );
         }
 
         // Aplicar el efecto de la transferencia actualizada
@@ -238,40 +248,40 @@ export const useTransfersStore = defineStore("transfers", {
         const newToAccount = accountsStore.accounts.find(acc => acc.id === newToAccountId);
 
         if (newFromAccount) {
-            // Validar saldo suficiente antes de aplicar el nuevo monto
-            if (newFromAccount.balance < newAmount && newFromAccountId === originalFromAccount?.id) {
-                // Si la cuenta de origen no cambió y el saldo es insuficiente
-                // Esto es una validación compleja, podría necesitar refinamiento
-                // si se permiten cambios de cuenta de origen.
-                // Por simplicidad, si la cuenta de origen es la misma, la validación se hace después de la reversión.
-            } else if (newFromAccount.balance < newAmount && newFromAccountId !== originalFromAccount?.id) {
-                // Si la cuenta de origen cambió y el saldo es insuficiente en la nueva cuenta
-                throw new Error('Saldo insuficiente en la nueva cuenta de origen para la transferencia actualizada.');
-            }
-            await accountsStore.updateAccountBalance(
-                newFromAccountId,
-                parseFloat((newFromAccount.balance - newAmount).toFixed(2))
-            );
+          // Validar saldo suficiente antes de aplicar el nuevo monto
+          if (newFromAccount.balance < newAmount && newFromAccountId === originalFromAccount?.id) {
+            // Si la cuenta de origen no cambió y el saldo es insuficiente
+            // Esto es una validación compleja, podría necesitar refinamiento
+            // si se permiten cambios de cuenta de origen.
+            // Por simplicidad, si la cuenta de origen es la misma, la validación se hace después de la reversión.
+          } else if (newFromAccount.balance < newAmount && newFromAccountId !== originalFromAccount?.id) {
+            // Si la cuenta de origen cambió y el saldo es insuficiente en la nueva cuenta
+            throw new Error('Saldo insuficiente en la nueva cuenta de origen para la transferencia actualizada.');
+          }
+          await accountsStore.updateAccountBalance(
+            newFromAccountId,
+            parseFloat((newFromAccount.balance - newAmount).toFixed(2))
+          );
         } else {
-             throw new Error('Nueva cuenta de origen no encontrada.');
+          throw new Error('Nueva cuenta de origen no encontrada.');
         }
         if (newToAccount) {
-            await accountsStore.updateAccountBalance(
-                newToAccountId,
-                parseFloat((newToAccount.balance + newAmount).toFixed(2))
-            );
+          await accountsStore.updateAccountBalance(
+            newToAccountId,
+            parseFloat((newToAccount.balance + newAmount).toFixed(2))
+          );
         } else {
-            throw new Error('Nueva cuenta de destino no encontrada.');
+          throw new Error('Nueva cuenta de destino no encontrada.');
         }
 
         // Actualizar el estado local del store
         const index = this.transfers.findIndex(t => t.id === transferId);
         if (index !== -1) {
-          Object.assign(this.transfers[index], { 
+          Object.assign(this.transfers[index], {
             id: transferId, // Aseguramos el ID
             date: dateToSave, // Aseguramos que la fecha sea un objeto Date
             amount: amountToSave,
-            ...updatedData 
+            ...updatedData
           });
         }
       } catch (err: any) {
@@ -294,6 +304,7 @@ export const useTransfersStore = defineStore("transfers", {
       try {
         await waitForAuth();
         const accountsStore = useAccountsStore();
+        const creditCardsStore = useCreditCardsStore();
 
         // Obtener la transferencia antes de eliminar para revertir los saldos
         const transferToDelete = this.transfers.find(t => t.id === transferId);
@@ -306,20 +317,29 @@ export const useTransfersStore = defineStore("transfers", {
         await deleteDoc(transferRef);
 
         // Revertir los saldos de las cuentas afectadas
+        // Origen siempre es cuenta normal
         const fromAccount = accountsStore.accounts.find(acc => acc.id === transferToDelete.fromAccountId);
-        const toAccount = accountsStore.accounts.find(acc => acc.id === transferToDelete.toAccountId);
-
         if (fromAccount) {
-            await accountsStore.updateAccountBalance(
-                transferToDelete.fromAccountId,
-                parseFloat((fromAccount.balance + transferToDelete.amount).toFixed(2)) // Devolver el monto a la cuenta de origen
-            );
+          await accountsStore.updateAccountBalance(
+            transferToDelete.fromAccountId,
+            parseFloat((fromAccount.balance + transferToDelete.amount).toFixed(2))
+          );
         }
+
+        // Destino puede ser cuenta normal o tarjeta
+        const toAccount = accountsStore.accounts.find(acc => acc.id === transferToDelete.toAccountId);
+        const toCreditCard = creditCardsStore.creditCards.find(card => card.id === transferToDelete.toAccountId);
+
         if (toAccount) {
-            await accountsStore.updateAccountBalance(
-                transferToDelete.toAccountId,
-                parseFloat((toAccount.balance - transferToDelete.amount).toFixed(2)) // Quitar el monto de la cuenta de destino
-            );
+          await accountsStore.updateAccountBalance(
+            transferToDelete.toAccountId,
+            parseFloat((toAccount.balance - transferToDelete.amount).toFixed(2))
+          );
+        } else if (toCreditCard) {
+          await creditCardsStore.updateCreditCard(
+            toCreditCard.id,
+            { balance: (toCreditCard.balance ?? 0) - transferToDelete.amount }
+          );
         }
 
         // Eliminar la transferencia del estado local del store
