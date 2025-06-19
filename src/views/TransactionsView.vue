@@ -90,10 +90,8 @@
               class="px-2 py-4 md:px-6 md:py-4 text-sm text-text-primary-light dark:text-text-primary-dark hidden md:table-cell">
               {{ transaction.details || '-' }}</td>
             <td class="px-2 py-4 md:px-6 md:py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <!-- Solo muestra el botón si NO es transacción de tarjeta de crédito -->
-              <button
-                v-if="!isCreditCardTransaction(transaction)"
-                @click="openTransactionModal(transaction)"
+              <!-- Solo muestra el botón si NO es transacción de tarjeta de crédito -->
+              <button v-if="!isCreditCardTransaction(transaction)" @click="openTransactionModal(transaction)"
                 class="text-primary-light dark:text-primary-dark hover:text-primary-dark dark:hover:text-primary-light mr-1 md:mr-4">
                 <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                   xmlns="http://www.w3.org/2000/svg">
@@ -123,11 +121,17 @@
         </tbody>
       </table>
 
-      <LoadingSpinner v-if="isLoadingGlobal" />
+      <BillsStackSpinner v-if="isLoadingGlobal" />
     </div>
 
+    <!-- Modal para guardar transacción -->
     <Modal :is-visible="isModalVisible" :title="currentTransactionId ? 'Editar Transacción' : 'Añadir Transacción'"
       @close="closeTransactionModal">
+      <!-- Spinner de transacción en proceso -->
+      <div v-if="isSavingTransaction">
+        <BillsStackSpinner :amount="transactionForm.amount || 0" size="large" />
+      </div>
+
       <!-- Mensajes de notificación dentro del modal (Solo errorMessage aquí) -->
       <div v-if="errorMessage" class="p-3 mb-4 rounded-md bg-destructive-light text-white font-medium">
         {{ errorMessage }}
@@ -174,14 +178,8 @@
             placeholder="Selecciona una categoría" :required="true" />
         </div>
         <div class="mb-4">
-          <BaseSelect
-            id="transaction-account"
-            label="Cuenta"
-            v-model="transactionForm.accountId"
-            :options="accountAndCreditCardOptions"
-            placeholder="Selecciona una cuenta o tarjeta"
-            :required="true"
-          />
+          <BaseSelect id="transaction-account" label="Cuenta" v-model="transactionForm.accountId"
+            :options="accountAndCreditCardOptions" placeholder="Selecciona una cuenta o tarjeta" :required="true" />
         </div>
         <div class="mb-6">
           <BaseInput id="transaction-details" label="Detalles (Opcional)" type="text" v-model="transactionForm.details"
@@ -206,6 +204,9 @@
     <ConfirmDialog :is-visible="isConfirmDeleteVisible" title="Confirmar Eliminación"
       message="¿Estás seguro de que quieres eliminar esta transacción? Esta acción revertirá el saldo de la cuenta asociada."
       @confirm="deleteConfirmedTransaction" @cancel="cancelDeleteTransaction" />
+    <div v-if="isDeletingTransaction">
+      <BillsStackSpinner />
+    </div>
   </div>
 </template>
 
@@ -218,7 +219,7 @@ import Modal from '../components/common/Modal.vue';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import BaseInput from '../components/common/BaseInput.vue';
 import BaseSelect from '../components/common/BaseSelect.vue';
-import LoadingSpinner from '../components/common/LoadingSpinner.vue';
+import BillsStackSpinner from '../components/common/BillsStackSpinner.vue';
 import type { Transaction } from '../types/Transaction';
 import { Timestamp } from 'firebase/firestore';
 import { parseLocalDateString } from '../utils/dateUtils';
@@ -230,6 +231,7 @@ const categoriesStore = useCategoriesStore();
 const accountsStore = useAccountsStore();
 const creditCardsStore = useCreditCardsStore();
 
+const isDeletingTransaction = ref(false);
 
 // --- Estados del Formulario y Modal ---
 const isModalVisible = ref(false);
@@ -393,6 +395,11 @@ const closeTransactionModal = () => {
   };
 };
 
+
+// Estado para el spinner de transacción
+const isSavingTransaction = ref(false);
+
+// Modificar la función saveTransaction
 const saveTransaction = async () => {
   clearMessages();
 
@@ -418,6 +425,7 @@ const saveTransaction = async () => {
   }
 
   try {
+    isSavingTransaction.value = true;
     let dateToParse = transactionForm.value.date;
     if (typeof dateToParse !== 'string' || !dateToParse) {
       dateToParse = new Date().toISOString().slice(0, 10);
@@ -433,7 +441,7 @@ const saveTransaction = async () => {
     const transactionData = {
       ...transactionForm.value,
       date: transactionDate,
-      amount: parseFloat(parsedAmount.toFixed(2)), // Usar parsedAmount aquí
+      amount: parseFloat(parsedAmount.toFixed(2)),
     };
 
     if (currentTransactionId.value) {
@@ -447,6 +455,8 @@ const saveTransaction = async () => {
   } catch (error: any) {
     console.error('Error al guardar/actualizar transacción:', error);
     showErrorMessage(`Error al guardar la transacción: ${error.message}`);
+  } finally {
+    isSavingTransaction.value = false;
   }
 };
 
@@ -457,6 +467,7 @@ const confirmDeleteTransaction = (id: string) => {
 
 const deleteConfirmedTransaction = async () => {
   if (transactionToDeleteId.value) {
+    isDeletingTransaction.value = true;
     try {
       await transactionsStore.deleteTransaction(transactionToDeleteId.value);
       showSuccessMessage('Transacción eliminada correctamente.');
@@ -464,6 +475,7 @@ const deleteConfirmedTransaction = async () => {
       console.error('Error al eliminar transacción:', error);
       showErrorMessage(`Error al eliminar la transacción: ${error.message}`);
     } finally {
+      isDeletingTransaction.value = false;
       isConfirmDeleteVisible.value = false;
       transactionToDeleteId.value = null;
     }
@@ -499,7 +511,52 @@ watch(() => transactionForm.value.type, (newType) => {
 </script>
 
 <style scoped>
-/* Estilos para la transición de la notificación flotante */
+.money-rain-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.money-item {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23FFD700' stroke='%23DAA520' stroke-width='5'/%3E%3Ctext x='50' y='65' font-family='Arial' font-size='50' text-anchor='middle' fill='%23DAA520'%3E%24%3C/text%3E%3C/svg%3E") center/contain no-repeat;
+  animation: moneyFall var(--duration) ease-in forwards;
+  animation-delay: var(--delay);
+  opacity: 0;
+  top: -40px;
+}
+
+@keyframes moneyFall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  25% {
+    transform: translateY(25vh) rotate(90deg);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(50vh) rotate(180deg);
+    opacity: 0.8;
+  }
+  75% {
+    transform: translateY(75vh) rotate(270deg);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* Estilos existentes */
 .fade-message-enter-active,
 .fade-message-leave-active {
   transition: opacity 0.5s ease-out;

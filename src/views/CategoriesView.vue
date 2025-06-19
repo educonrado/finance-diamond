@@ -94,11 +94,15 @@
           </tr>
         </tbody>
       </table>
-      <LoadingSpinner v-if="categoriesStore.isLoading" />
+      <BillsStackSpinner v-if="categoriesStore.isLoading" />
     </div>
 
     <!-- Modal para Añadir/Editar Categoría -->
     <Modal :is-visible="isModalVisible" :title="currentCategoryId ? 'Editar Categoría' : 'Añadir Categoría'" @close="closeCategoryModal">
+      <div v-if="isSavingCategory"
+        class="fixed inset-0 z-50 flex items-center justify-center">
+        <BillsStackSpinner />
+      </div>
       <div v-if="errorMessage" class="p-3 mb-4 rounded-md bg-destructive-light text-white font-medium">
         {{ errorMessage }}
       </div>
@@ -195,6 +199,7 @@ import Modal from '../components/common/Modal.vue';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import BaseInput from '../components/common/BaseInput.vue';
 import LoadingSpinner from '../components/common/LoadingSpinner.vue';
+import BillsStackSpinner from '../components/common/BillsStackSpinner.vue';
 import { useCategoriesStore } from '../stores/categories';
 import type { Category } from '../types/Category';
 
@@ -227,6 +232,10 @@ let messageTimeout: ReturnType<typeof setTimeout> | null = null;
 // Confirmation Dialog States
 const isConfirmDeleteVisible = ref(false);
 const categoryToDeleteId = ref<string | null>(null);
+
+// Loading States
+const isSavingCategory = ref(false);
+const isDeletingCategory = ref(false);
 
 // Available Icons for the selector (Expanded for more variety)
 const availableIcons = [
@@ -291,13 +300,16 @@ const closeCategoryModal = () => {
 
 const saveCategory = async () => {
   clearMessages();
+  isSavingCategory.value = true;
 
   if (!categoryForm.value.name.trim()) {
     showErrorMessage('El nombre de la categoría es obligatorio.');
+    isSavingCategory.value = false;
     return;
   }
   if (!categoryForm.value.icon) {
     showErrorMessage('Debe seleccionar un ícono para la categoría.');
+    isSavingCategory.value = false;
     return;
   }
 
@@ -320,6 +332,8 @@ const saveCategory = async () => {
   } catch (error: any) {
     console.error('Error al guardar/actualizar categoría:', error);
     showErrorMessage(`Error al guardar la categoría: ${error.message}`);
+  } finally {
+    isSavingCategory.value = false;
   }
 };
 
@@ -330,6 +344,7 @@ const confirmDeleteCategory = (id: string) => {
 };
 
 const deleteConfirmedCategory = async () => {
+  isDeletingCategory.value = true;
   if (categoryToDeleteId.value) {
     try {
       await categoriesStore.deleteCategory(categoryToDeleteId.value);
@@ -340,6 +355,7 @@ const deleteConfirmedCategory = async () => {
     } finally {
       isConfirmDeleteVisible.value = false;
       categoryToDeleteId.value = null;
+      isDeletingCategory.value = false;
     }
   }
 };

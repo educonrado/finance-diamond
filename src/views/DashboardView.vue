@@ -1,9 +1,9 @@
 <template>
   <div class="p-4 md:p-6 space-y-6">
-    <!-- Indicador de carga global -->
-    <div v-if="isLoading" class="fixed top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2">
-      <div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-      <span class="text-sm">Cargando datos...</span>
+    <!-- Overlay de carga global -->
+    <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+      <BillsStackSpinner />
+      <span class="text-white text-lg mt-4 absolute top-2/3 w-full text-center">Cargando datos...</span>
     </div>
 
     <!-- Encabezado y Selectores -->
@@ -176,6 +176,7 @@ import { useAccountsStore } from '@/stores/accounts'
 import { useTransactionsStore } from '@/stores/transactions'
 import { useCategoriesStore } from '@/stores/categories'
 import { getMonthlyIncomeAndExpenses } from '@/utils/financeUtils'
+import BillsStackSpinner from '../components/common/BillsStackSpinner.vue'
 
 // Imports de componentes
 const SummaryCard = defineAsyncComponent(() => import('../components/dashboard/SummaryCard.vue'))

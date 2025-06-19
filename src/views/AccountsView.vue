@@ -1,11 +1,18 @@
 <!-- src/views/AccountsView.vue -->
 <template>
   <div class="accounts-page py-6 px-4 md:px-6">
+    <!-- Overlay de loading global -->
+    <div v-if="isLoadingGlobal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+      <BillsStackSpinner />
+      <span class="text-white text-lg mt-4 absolute top-2/3 w-full text-center">Cargando cuentas...</span>
+    </div>
+
     <!-- Encabezado de la página y botón para añadir cuenta -->
     <div class="flex justify-end items-center mb-6">
       <button
         @click="openAccountModal()"
         class="px-6 py-3 bg-primary-light dark:bg-primary-dark text-white rounded-lg shadow-md hover:bg-primary-dark dark:hover:bg-primary-light transition-colors duration-200"
+        :disabled="isLoadingGlobal"
       >
         + Añadir
       </button>
@@ -13,6 +20,7 @@
         v-if="canShowTransferButton"
         @click="openTransferModal"
         class="ml-3 px-6 py-3 bg-secondary-light dark:bg-secondary-dark text-white rounded-lg shadow-md hover:bg-secondary-dark dark:hover:bg-secondary-light transition-colors duration-200"
+        :disabled="isLoadingGlobal"
       >
         Mover dinero entre cuentas
       </button>
@@ -75,11 +83,13 @@
           </tr>
         </tbody>
       </table>
-      <LoadingSpinner v-if="accountsStore.isLoading" />
     </div>
 
     <!-- Modal para Añadir/Editar Cuenta -->
     <Modal :is-visible="isModalVisible" :title="currentAccountId ? 'Editar Cuenta' : 'Añadir Cuenta'" @close="closeAccountModal">
+      <div v-if="isSavingAccount">
+        <BillsStackSpinner />
+      </div>
       <div v-if="errorMessage" class="p-3 mb-4 rounded-md bg-destructive-light text-white font-medium">
         {{ errorMessage }}
       </div>
@@ -147,7 +157,14 @@
 
     <!-- Modal para Transferencia entre Cuentas -->
     <Modal :is-visible="isTransferModalVisible" title="Mover Dinero entre Cuentas" @close="closeTransferModal">
-      <TransferFormModal @success="onTransferSuccess" @close="closeTransferModal" />
+      <div v-if="isSavingTransfer" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+    <BillsStackSpinner />
+  </div>
+  <TransferFormModal
+    @saving="isSavingTransfer = true"
+    @saved="isSavingTransfer = false; onTransferSuccess()"
+    @close="closeTransferModal"
+  />
     </Modal>
 
     <!-- Historial de transferencias internas -->
@@ -213,6 +230,12 @@
       @confirm="deleteConfirmedTransfer"
       @cancel="cancelDeleteTransfer"
     />
+    <div v-if="isDeletingAccount">
+      <BillsStackSpinner />
+    </div>
+    <div v-if="isDeletingTransfer">
+      <BillsStackSpinner />
+    </div>
   </div>
 </template>
 
@@ -224,7 +247,7 @@ import { useCreditCardsStore } from '../stores/creditCards';
 import Modal from '../components/common/Modal.vue';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import BaseInput from '../components/common/BaseInput.vue';
-import LoadingSpinner from '../components/common/LoadingSpinner.vue';
+import BillsStackSpinner from '../components/common/BillsStackSpinner.vue';
 import TransferFormModal from '../components/common/TransferFormModal.vue';
 import type { Account } from '../types/Account';
 import { Timestamp } from 'firebase/firestore';
@@ -233,6 +256,9 @@ import { Timestamp } from 'firebase/firestore';
 const accountsStore = useAccountsStore();
 const transfersStore = useTransfersStore();
 const creditCardsStore = useCreditCardsStore();
+
+const isSavingAccount = ref(false);
+const isSavingTransfer = ref(false)
 
 // --- Estados del Formulario y Modal ---
 const isModalVisible = ref(false);
@@ -251,6 +277,8 @@ let messageTimeout: ReturnType<typeof setTimeout> | null = null;
 // --- Estados del Diálogo de Confirmación ---
 const isConfirmDeleteVisible = ref(false);
 const accountToDeleteId = ref<string | null>(null);
+const isDeletingAccount = ref(false);
+const isDeletingTransfer = ref(false);
 
 // --- Datos Reactivos del Store ---
 const accounts = computed(() => accountsStore.accounts);
@@ -282,6 +310,7 @@ const confirmDeleteTransfer = (id: string) => {
 
 const deleteConfirmedTransfer = async () => {
   if (transferToDeleteId.value) {
+    isDeletingTransfer.value = true;
     try {
       await transfersStore.deleteTransfer(transferToDeleteId.value);
       showSuccessMessage('Transferencia eliminada y saldos revertidos correctamente.');
@@ -290,6 +319,7 @@ const deleteConfirmedTransfer = async () => {
     } finally {
       isConfirmDeleteTransferVisible.value = false;
       transferToDeleteId.value = null;
+      isDeletingTransfer.value = false;
     }
   }
 };
@@ -375,14 +405,15 @@ const closeAccountModal = () => {
   clearMessages();
 };
 
+const isLoadingGlobal = computed(() => accountsStore.isLoading || transfersStore.isLoading);
+
 const saveAccount = async () => {
   clearMessages();
-
+  if (isLoadingGlobal.value) return;
   if (!accountForm.value.name.trim()) {
     showErrorMessage('El nombre de la cuenta es obligatorio.');
     return;
   }
-  
   // Solo validar y usar initialBalance si estamos creando una nueva cuenta
   let parsedInitialBalance = 0;
   if (!currentAccountId.value) {
@@ -397,7 +428,7 @@ const saveAccount = async () => {
     showErrorMessage('Debe seleccionar un color para la cuenta.');
     return;
   }
-
+  isSavingAccount.value = true;
   try {
     if (currentAccountId.value) {
       // Al editar, solo se actualiza el nombre y el color.
@@ -417,8 +448,9 @@ const saveAccount = async () => {
     }
     closeAccountModal();
   } catch (error: any) {
-    console.error('Error al guardar/actualizar cuenta:', error);
     showErrorMessage(`Error al guardar la cuenta: ${error.message}`);
+  } finally {
+    isSavingAccount.value = false;
   }
 };
 
@@ -430,15 +462,16 @@ const confirmDeleteAccount = (id: string) => {
 
 const deleteConfirmedAccount = async () => {
   if (accountToDeleteId.value) {
+    isDeletingAccount.value = true;
     try {
       await accountsStore.deleteAccount(accountToDeleteId.value);
       showSuccessMessage('Cuenta eliminada correctamente.');
     } catch (error: any) {
-      console.error('Error al eliminar cuenta:', error);
       showErrorMessage(`Error al eliminar la cuenta: ${error.message}`);
     } finally {
       isConfirmDeleteVisible.value = false;
       accountToDeleteId.value = null;
+      isDeletingAccount.value = false;
     }
   }
 };

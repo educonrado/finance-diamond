@@ -6,6 +6,7 @@ import {
   type User,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "../firebase/config";
 
@@ -55,6 +56,23 @@ export const useAuth = () => {
     }
   };
 
+  const signInWithEmailPassword = async (email: string, password: string) => {
+    try {
+      isLoading.value = true;
+      error.value = null;
+
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      console.log("✅ Sesión iniciada con email:", result.user);
+      return result.user;
+    } catch (err: any) {
+      console.error("❌ Error en inicio de sesión con email:", err);
+      error.value = err.message || "Error desconocido al iniciar sesión";
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
   return {
     user,
     userUid,
@@ -64,5 +82,6 @@ export const useAuth = () => {
     isInitialized,
     signOut,
     signInWithGoogle,
+    signInWithEmailPassword,
   };
 };
