@@ -117,9 +117,9 @@
           <!-- Botón Nueva Transferencia -->
           <button @click="goToNewTransfer"
             class="group flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-full shadow-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 hover:shadow-xl active:scale-95 transition-all duration-200"
-            aria-label="Crear nueva transferencia entre cuentas">
-            <span class="hidden sm:inline whitespace-nowrap">Nueva Transferencia</span>
-            <span class="sm:hidden">Transferencia</span>
+            aria-label="Mover dinero entre cuentas">
+            <span class="hidden sm:inline whitespace-nowrap">Mover dinero entre cuentas</span>
+            <span class="sm:hidden">Mover dinero</span>
             <div
               class="w-8 h-8 bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-800 transition-colors">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -258,7 +258,7 @@ const goToNewTransaction = () => {
 
 const goToNewTransfer = () => {
   closeMenu()
-  router.push('/transfers')
+  router.push('/accounts')
 }
 
 // Control del menú

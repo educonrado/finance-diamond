@@ -98,37 +98,37 @@
       :class="{
         'md:ml-10': !isSidebarCollapsed,
         'md:ml-5': isSidebarCollapsed,
-        'ml-0': isMobile, // En móvil no hay margen izquierdo por la sidebar
+        'ml-0': isMobile,
       }"
-      class="flex-1 overflow-auto transition-all duration-300 ease-in-out py-6 px-4 md:px-6 md:ml-0"
+      class="flex-1 overflow-auto transition-all duration-300 ease-in-out py-6 px-4 md:px-6 md:ml-0 relative"
     >
-      <header class="flex items-center justify-between mb-6">
-        <button
-          @click="toggleMobileMenu"
-          class="p-2 text-text-primary-light dark:text-text-primary-dark md:hidden"
+    <button
+        @click="toggleMobileMenu"
+        class="p-2 text-text-primary-light dark:text-text-primary-dark md:hidden fixed top-4 left-4 z-50 bg-white dark:bg-gray-900 rounded-full shadow-lg border border-gray-200 dark:border-gray-700"
+        style="box-shadow: 0 2px 8px rgba(0,0,0,0.08);"
+      >
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
         >
-          <svg
-            class="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 6h16M4 12h16M4 18h16"
-            ></path>
-          </svg>
-        </button>
-
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 6h16M4 12h16M4 18h16"
+          ></path>
+        </svg>
+      </button>
+      <header class="flex items-center justify-between mb-6 md:static md:relative">
+        <span class="md:hidden w-10 h-10"></span>
         <h2
-          class="text-3xl font-semibold text-text-primary-light dark:text-text-primary-dark"
+          class="text-3xl font-semibold text-text-primary-light dark:text-text-primary-dark mx-auto md:mx-0"
         >
           {{ currentRouteName }}
         </h2>
-
         <button
           @click="toggleSidebar"
           class="hidden md:block p-2 text-text-secondary-light dark:text-text-secondary-dark"
@@ -157,19 +157,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-// Importa los componentes de iconos que acabamos de crear
 import DashboardIcon from "../components/icons/DashboardIcon.vue";
 import TransactionsIcon from "../components/icons/TransactionsIcon.vue";
 import CategoriesIcon from "../components/icons/CategoriesIcon.vue";
 import AccountsIcon from "../components/icons/AccountsIcon.vue";
-import SettingsIcon from "../components/icons/SettingsIcon.vue";
 import { useAuth } from "@/composables/useAuth";
-import TransfersIcon from "@/components/icons/TransfersIcon.vue";
 import CreditCardIcon from "@/components/icons/CreditCardIcon.vue";
 
 const isSidebarCollapsed = ref(false);
 const isMobileMenuOpen = ref(false);
-const isMobile = ref(false); // Determinado por el tamaño de la ventana
+const isMobile = ref(false);
 
 const { user, signOut } = useAuth();
 const router = useRouter(); 
