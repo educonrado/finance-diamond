@@ -67,15 +67,13 @@ watch(user, async (newUser) => {
       router.push({ name: 'login' })
     }
   }
-}, { immediate: true }) // ¡Añadir immediate!
+}, { immediate: true })
 
 onMounted(async () => {
-  // Eliminar initAuth() ya que no existe
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
   isDarkMode.value = prefersDark
 })
 </script>
 
 <style>
-/* Estilos globales si los necesitas */
 </style>

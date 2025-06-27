@@ -19,12 +19,6 @@
         </div>
       </div>
       
-      <!-- Icono (opcional) -->
-      <div v-if="!loading" class="ml-4">
-        <div class="w-8 h-8 rounded-full flex items-center justify-center" :class="iconBackgroundClasses">
-          <div class="w-4 h-4 rounded-full" :class="iconClasses"></div>
-        </div>
-      </div>
     </div>
   </div>
 </template>

@@ -25,35 +25,35 @@
 
     <!-- KPIs con estados de carga -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <SummaryCard 
-        title="Balance Total" 
-        :value="accountsLoaded ? formattedBalance : '--'" 
-        color="blue" 
-        :loading="!accountsLoaded" 
-      />
+      
       <SummaryCard 
         title="Ingresos del Mes" 
         :value="transactionsLoaded ? formattedIncome : '--'" 
         color="green" 
-        :change="transactionsLoaded ? incomeChange : undefined" 
+        
         :loading="!transactionsLoaded" 
       />
       <SummaryCard 
         title="Gastos del Mes" 
         :value="transactionsLoaded ? formattedExpenses : '--'" 
         color="red" 
-        :change="transactionsLoaded ? expenseChange : undefined" 
+        
         :loading="!transactionsLoaded" 
       />
       <SummaryCard 
-        title="Margen Neto" 
-        :value="transactionsLoaded ? formattedNet : '--'" 
-        :color="transactionsLoaded ? (netIsPositive ? 'green' : 'red') : 'gray'" 
-        :loading="!transactionsLoaded" 
+        title="Ventas" 
+        :value="'--'" 
+        color="green" 
+        :loading="!accountsLoaded" 
+      />
+      <SummaryCard 
+        title="Balance Total" 
+        :value="accountsLoaded ? formattedBalance : '--'" 
+        color="blue" 
+        :loading="!accountsLoaded" 
       />
     </div>
 
-    <!-- Gráficos con estados de carga -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Donut Chart -->
       <ChartCard title="Balance por Cuentas">
@@ -114,12 +114,12 @@
         leave-active-class="transition-all duration-200 ease-in" leave-from-class="opacity-100 scale-100 translate-y-0"
         leave-to-class="opacity-0 scale-75 translate-y-4">
         <div v-if="isMenuOpen" class="flex flex-col items-end gap-3">
-          <!-- Botón Nueva Transferencia -->
+          <!-- Botón Movimiento entre cuentas -->
           <button @click="goToNewTransfer"
             class="group flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-full shadow-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 hover:shadow-xl active:scale-95 transition-all duration-200"
             aria-label="Crear nueva transferencia entre cuentas">
-            <span class="hidden sm:inline whitespace-nowrap">Nueva Transferencia</span>
-            <span class="sm:hidden">Transferencia</span>
+            <span class="hidden sm:inline whitespace-nowrap">Movimiento entre cuentas</span>
+            <span class="sm:hidden">Movimiento entre cuentas</span>
             <div
               class="w-8 h-8 bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-800 transition-colors">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -245,8 +245,8 @@ const formattedNet = computed(() =>
 const netIsPositive = computed(() => monthlyData.value.income - monthlyData.value.expenses >= 0)
 
 // Cambios simulados (podrías calcularlos realmente)
-const incomeChange = '+5.2%'
-const expenseChange = '-3.1%'
+const incomeChange = '0%'
+const expenseChange = '0%'
 
 // Navegación
 const router = useRouter()
@@ -258,7 +258,7 @@ const goToNewTransaction = () => {
 
 const goToNewTransfer = () => {
   closeMenu()
-  router.push('/transfers')
+  router.push('/accounts')
 }
 
 // Control del menú

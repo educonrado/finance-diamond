@@ -47,12 +47,10 @@ const DEFAULT_ACCOUNT_COLORS = [
 ];
 
 export const DEFAULT_ACCOUNTS: Omit<Account, 'id' | 'balance'>[] = [
-  { name: 'Efectivo', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[0] },
-  { name: 'Cuenta de Ahorros', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[1] },
-  { name: 'Tarjeta de Crédito', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[2] },
-  { name: 'Inversiones', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[3] },
-  { name: 'Cuenta Corriente', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[4] },
-  { name: 'Fondo de Emergencia', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[5] },
+  { name: 'Efectivo', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[0], order: 0, includeInTotal: true },
+  { name: 'Cuenta de Ahorros', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[1], order: 1, includeInTotal: true  },
+  { name: 'Inversiones', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[2], order: 2, includeInTotal: true  },
+  { name: 'Fondo de Emergencia', initialBalance: 0, color: DEFAULT_ACCOUNT_COLORS[3], order: 3, includeInTotal: true  },
 ];
 
 export const useUserSetup = () => {
