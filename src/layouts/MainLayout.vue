@@ -11,8 +11,8 @@
       :class="{
         'w-64': !isSidebarCollapsed,
         'w-20': isSidebarCollapsed,
-        'translate-x-0': isMobileMenuOpen, // Cuando el menú móvil está abierto
-        '-translate-x-full': !isMobileMenuOpen && isMobile, // Cuando el menú móvil está cerrado Y es móvil
+        'translate-x-0': isMobileMenuOpen,
+        '-translate-x-full': !isMobileMenuOpen && isMobile,
       }"
       class="fixed inset-y-0 left-0 bg-sidebar-background transition-all duration-300 ease-in-out z-40 md:static md:translate-x-0 flex flex-col justify-between">
       <div class="p-4 flex items-center justify-between h-16">
@@ -123,6 +123,7 @@
         </svg>
       </button>
       <header class="flex items-center justify-between mb-6 md:static md:relative">
+        
         <span class="md:hidden w-10 h-10"></span>
         <h2
           class="text-3xl font-semibold text-text-primary-light dark:text-text-primary-dark mx-auto md:mx-0"
@@ -174,7 +175,7 @@ const router = useRouter();
 const handleLogout = async () => {
   try {
     await signOut();
-    router.push({ name: "login" }); // Redirige al usuario a la página de login
+    router.push({ name: "login" });
   } catch (error) {
     console.error("Error al cerrar sesión:", error);
     // Aquí podrías mostrar una notificación al usuario si el logout falla
@@ -210,7 +211,7 @@ const toggleMobileMenu = () => {
 };
 
 const closeMobileMenu = () => {
-  if (isMobile.value) { // Solo cierra si realmente estamos en móvil
+  if (isMobile.value) {
     isMobileMenuOpen.value = false;
   }
 };
@@ -220,23 +221,20 @@ const currentRouteName = computed(() => {
   const nameMap: { [key: string]: string } = {
     dashboard: "Panel",
     transactions: "Transacciones",
-    categories: "Categorías",
     accounts: "Cuentas",
     creditcards: "Tarjetas de crédito",
     settings: "Configuración",
   };
-  return nameMap[route.name as string] || "FinanceDiamond"; // Default si la ruta no está mapeada
+  return nameMap[route.name as string] || "FinanceDiamond";
 });
 
 const navLinks = [
   { name: "Panel", path: "/", icon: DashboardIcon },
   { name: "Transacciones", path: "/transactions", icon: TransactionsIcon },
-  { name: "Categorías", path: "/categories", icon: CategoriesIcon },
   { name: "Cuentas", path: "/accounts", icon: AccountsIcon },
   { name: "Tarjetas de crédito", path: "/creditcards", icon: CreditCardIcon },
 ];
 </script>
 
 <style scoped>
-/* Puedes añadir estilos específicos si necesitas */
 </style>

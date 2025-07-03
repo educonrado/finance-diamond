@@ -22,7 +22,7 @@
         class="ml-3 px-6 py-3 bg-secondary-light dark:bg-secondary-dark text-white rounded-lg shadow-md hover:bg-secondary-dark dark:hover:bg-secondary-light transition-colors duration-200"
         :disabled="isLoadingGlobal"
       >
-        Mover dinero a cuenta
+        Mover entre cuentas
       </button>
     </div>
 

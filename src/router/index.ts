@@ -7,66 +7,66 @@ const routes: Array<RouteRecordRaw> = [
     path: '/login',
     name: 'login',
     component: () => import('../views/LoginView.vue'),
-    meta: { 
+    meta: {
       title: 'Iniciar sesión',
-      requiresGuest: true // Solo para usuarios no autenticados
+      requiresGuest: true
     }
   },
   {
     path: '/',
     name: 'dashboard',
     component: () => import('../views/DashboardView.vue'),
-    meta: { 
+    meta: {
       title: 'Panel de Control',
-      requiresAuth: true 
+      requiresAuth: true
     }
   },
   {
     path: '/transactions',
     name: 'transactions',
     component: () => import('../views/TransactionsView.vue'),
-    meta: { 
+    meta: {
       title: 'Transacciones',
-      requiresAuth: true 
+      requiresAuth: true
     }
   },
   {
     path: '/categories',
     name: 'categories',
     component: () => import('../views/CategoriesView.vue'),
-    meta: { 
+    meta: {
       title: 'Categorías',
-      requiresAuth: true 
+      requiresAuth: true
     }
   },
   {
     path: '/accounts',
     name: 'accounts',
     component: () => import('../views/AccountsView.vue'),
-    meta: { 
+    meta: {
       title: 'Cuentas',
-      requiresAuth: true 
+      requiresAuth: true
     }
   },
   {
     path: '/settings',
     name: 'settings',
     component: () => import('../views/SettingsView.vue'),
-    meta: { 
+    meta: {
       title: 'Configuración',
-      requiresAuth: true 
+      requiresAuth: true
     }
   },
   {
-      path: '/creditcards',
-      name: 'creditcards',
-      component: () => import('../views/CreditCardsView.vue'),
-      meta: {
-        title: 'Tarjetas de Crédito', 
-        requiresAuth: true 
-      }
-},
-  // Ruta comodín para 404
+    path: '/creditcards',
+    name: 'creditcards',
+    component: () => import('../views/CreditCardsView.vue'),
+    meta: {
+      title: 'Tarjetas de Crédito',
+      requiresAuth: true
+    }
+  },
+
   {
     path: '/:catchAll(.*)',
     name: 'NotFound',
@@ -84,22 +84,19 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const auth = getAuth()
   const user = auth.currentUser
-  
-  // Actualizar el título del documento
+
   document.title = to.meta.title ? `FinanceDiamond - ${to.meta.title}` : 'FinanceDiamond'
-  
-  // Si la ruta requiere autenticación y no hay usuario
+
   if (to.meta.requiresAuth && !user) {
     next({ name: 'login' })
     return
   }
-  
-  // Si la ruta es solo para invitados (login) y ya hay usuario autenticado
+
   if (to.meta.requiresGuest && user) {
     next({ name: 'dashboard' })
     return
   }
-  
+
   next()
 })
 
