@@ -6,5 +6,5 @@ export interface Account {
   balance: number;
   color: string;
   order?: number;
-  includeInTotal?: boolean;
+  includeInTotal?: boolean; // default true
 }

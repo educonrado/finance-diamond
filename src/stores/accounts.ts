@@ -66,6 +66,7 @@ export const useAccountsStore = defineStore('accounts', {
             initialBalance: parseFloat(data.initialBalance || 0),
             balance: parseFloat(data.balance || 0),
             color: data.color,
+            includeInTotal: data.includeInTotal !== false, // default true
           } as Account
         })
       } catch (err: any) {
@@ -90,6 +91,7 @@ export const useAccountsStore = defineStore('accounts', {
           {
             ...accountData,
             balance: initialBalanceAsNumber,
+            includeInTotal: accountData.includeInTotal !== false, // default true
           }
         )
 
@@ -116,7 +118,10 @@ export const useAccountsStore = defineStore('accounts', {
 
         const accountRef = doc(db, `${USERS_COLLECTION}/${userUid.value}/${ACCOUNTS_COLLECTION}`, accountId)
 
-        await updateDoc(accountRef, accountData)
+        await updateDoc(accountRef, {
+          ...accountData,
+          includeInTotal: accountData.includeInTotal !== false, // default true
+        })
 
         const index = this.accounts.findIndex((acc) => acc.id === accountId)
         if (index !== -1) {

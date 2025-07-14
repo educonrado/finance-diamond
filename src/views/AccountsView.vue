@@ -57,16 +57,20 @@
           <tr>
             <th scope="col" class="px-2 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Nombre</th>
             <th scope="col" class="px-2 py-3 md:px-6 md:py-3 text-right text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Saldo Actual</th>
+            <th scope="col" class="px-2 py-3 md:px-6 md:py-3 text-right text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Incluir en balance</th>
             <th scope="col" class="relative px-2 py-3 md:px-6 md:py-3"><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody class="bg-background-card-light dark:bg-background-card-dark divide-y divide-gray-200 dark:divide-gray-700">
-          <tr v-for="account in accounts" :key="account.id">
+          <tr v-for="account in accounts" :key="account.id" class="border-b hover:bg-gray-50 transition-colors">
             <td class="px-2 py-4 md:px-6 md:py-4 text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
               <span class="inline-block w-3 h-3 rounded-full mr-2" :style="{ backgroundColor: account.color }"></span>
               {{ account.name }}
             </td>
             <td class="px-2 py-4 md:px-6 md:py-4 whitespace-nowrap text-right text-sm font-medium text-text-primary-light dark:text-text-primary-dark">{{ formatCurrency(account.balance) }}</td>
+            <td class="px-4 py-2 text-center">
+              <input type="checkbox" :checked="account.includeInTotal ?? true" @change="onToggleIncludeInTotal(account, ($event.target as HTMLInputElement).checked)" />
+            </td>
             <td class="px-2 py-4 md:px-6 md:py-4 whitespace-nowrap text-right text-sm font-medium">
               <button @click="openAccountModal(account)" class="text-primary-light dark:text-primary-dark hover:text-primary-dark dark:hover:text-primary-light mr-1 md:mr-4">
                 <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
@@ -520,6 +524,17 @@ const getAccountName = (id: string) => {
   const found = allAccounts.find(acc => acc.id === id);
   return found ? found.name : 'Cuenta desconocida';
 };
+
+function onToggleIncludeInTotal(account: Account, checkedRaw: unknown) {
+  // Defensive: checkedRaw may be boolean or Event
+  let checked = false;
+  if (typeof checkedRaw === 'boolean') {
+    checked = checkedRaw;
+  } else if (checkedRaw && typeof checkedRaw === 'object' && 'target' in checkedRaw && checkedRaw.target) {
+    checked = (checkedRaw.target as HTMLInputElement).checked;
+  }
+  accountsStore.updateAccount(account.id, { ...account, includeInTotal: checked });
+}
 </script>
 
 <style scoped>

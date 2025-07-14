@@ -1,5 +1,9 @@
 <template>
   <form @submit.prevent="handleTransfer">
+    <div v-if="isLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+      <BillsStackSpinner />
+      <span class="text-white text-lg mt-4 absolute top-2/3 w-full text-center">Procesando transferencia...</span>
+    </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
       <div>
         <label for="from-account" class="block text-sm font-medium mb-1">Cuenta de Origen</label>
@@ -68,6 +72,7 @@ import { useAccountsStore } from '@/stores/accounts';
 import { useCreditCardsStore } from '@/stores/creditCards';
 import { useTransfersStore } from '@/stores/transfers';
 import BaseInput from '@/components/common/BaseInput.vue';
+import BillsStackSpinner from '@/components/common/BillsStackSpinner.vue';
 import type { Account } from '@/types/Account';
 
 const accountsStore = useAccountsStore();
@@ -84,6 +89,7 @@ const transferForm = ref({
 
 const errorMessage = ref<string | null>(null);
 const successMessage = ref<string | null>(null);
+const isLoading = ref(false);
 
 const accounts = computed(() => accountsStore.accounts);
 const creditCards = computed(() => creditCardsStore.creditCards);
@@ -122,25 +128,30 @@ const clearMessages = () => {
   successMessage.value = null;
 };
 
-const emit = defineEmits(['success', 'close']);
+const emit = defineEmits(['saved', 'close']);
 
 const handleTransfer = async () => {
   clearMessages();
+  isLoading.value = true;
 
   if (!transferForm.value.amount || transferForm.value.amount <= 0) {
     errorMessage.value = 'El monto de la transferencia debe ser un número positivo.';
+    isLoading.value = false;
     return;
   }
   if (!transferForm.value.fromAccountId) {
     errorMessage.value = 'Debe seleccionar una cuenta de origen.';
+    isLoading.value = false;
     return;
   }
   if (!transferForm.value.toAccountId) {
     errorMessage.value = 'Debe seleccionar una cuenta de destino.';
+    isLoading.value = false;
     return;
   }
   if (transferForm.value.fromAccountId === transferForm.value.toAccountId) {
     errorMessage.value = 'Las cuentas de origen y destino no pueden ser la misma.';
+    isLoading.value = false;
     return;
   }
 
@@ -150,6 +161,7 @@ const handleTransfer = async () => {
 
   if (!fromAccount || !toAccount) {
     errorMessage.value = 'Una de las cuentas seleccionadas no existe.';
+    isLoading.value = false;
     return;
   }
 
@@ -164,7 +176,7 @@ const handleTransfer = async () => {
     successMessage.value = 'Transferencia registrada correctamente.';
     setTimeout(() => {
       successMessage.value = null;
-      emit('success');
+      emit('saved');
     }, 1000);
     // Limpia el formulario
     transferForm.value = {
@@ -176,6 +188,8 @@ const handleTransfer = async () => {
     };
   } catch (error: any) {
     errorMessage.value = `Error al procesar la transferencia: ${error.message || 'Error desconocido'}`;
+  } finally {
+    isLoading.value = false;
   }
 };
 
