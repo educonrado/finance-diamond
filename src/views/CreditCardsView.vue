@@ -83,6 +83,18 @@
               <span class="text-text-secondary-light dark:text-text-secondary-dark font-medium">Alias:</span>
               <span class="font-bold text-text-primary-light dark:text-text-primary-dark">{{ card.name || '-' }}</span>
             </div>
+            <!-- Barra de progreso de uso de crédito -->
+            <div class="mt-4">
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-xs text-gray-500 dark:text-gray-400">Uso de crédito</span>
+                <span class="text-xs font-semibold">{{ usagePercent(card) }}%</span>
+              </div>
+              <div class="w-full h-3 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                <div :style="{ width: usagePercent(card) + '%'}"
+                  :class="['h-3 rounded-full transition-all duration-300', progressBarColor(card)]">
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -358,6 +370,18 @@ const deleteConfirmedCard = async () => {
 const cancelDeleteCard = () => {
   isConfirmDeleteVisible.value = false;
   cardToDeleteId.value = null;
+};
+
+const usagePercent = (card: CreditCardAccount) => {
+  if (!card.creditLimit || card.creditLimit === 0) return 0;
+  const used = Math.abs(card.balance);
+  return Math.min(100, Math.round((used / card.creditLimit) * 100));
+};
+const progressBarColor = (card: CreditCardAccount) => {
+  const percent = usagePercent(card);
+  if (percent <= 50) return 'bg-green-400';
+  if (percent <= 75) return 'bg-yellow-400';
+  return 'bg-red-500';
 };
 
 onMounted(async () => {

@@ -7,6 +7,38 @@
         + Añadir
       </button>
     </div>
+    <!-- Filtros de mes, año y cuenta (UI/UX mejorado) -->
+    <div class="mb-6">
+      <div class="flex flex-col md:flex-row md:items-center md:space-x-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm px-4 py-3 gap-3">
+        <div class="flex flex-col sm:flex-row gap-2 flex-1">
+          <select v-model="selectedMonth"
+            class="form-select min-w-[120px] border rounded px-3 py-2 text-sm dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark">
+            <option v-for="(month, index) in months" :key="index" :value="index + 1">{{ month }}</option>
+          </select>
+          <select v-model="selectedYear"
+            class="form-select min-w-[100px] border rounded px-3 py-2 text-sm dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark">
+            <option v-for="year in yearOptions" :key="year" :value="year">{{ year }}</option>
+          </select>
+          <select v-model="selectedAccountId"
+            class="form-select min-w-[160px] border rounded px-3 py-2 text-sm dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark">
+            <option value="">Todas las cuentas</option>
+            <option v-for="acc in accountsAndCards" :key="acc.value" :value="acc.value">{{ acc.text }}</option>
+          </select>
+        </div>
+        <div class="flex items-center justify-end">
+          <button @click="resetFilters" class="ml-2 w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors relative group" :title="'Restablecer filtros'">
+            <!-- Icono de "filter clear" (nuevo SVG) -->
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <polygon fill="currentColor" points="30 11.414 28.586 10 24 14.586 19.414 10 18 11.414 22.586 16 18 20.585 19.415 22 24 17.414 28.587 22 30 20.587 25.414 16 30 11.414"/>
+              <path fill="currentColor" d="M4,4A2,2,0,0,0,2,6V9.1709a2,2,0,0,0,.5859,1.4145L10,18v8a2,2,0,0,0,2,2h4a2,2,0,0,0,2-2V24H16v2H12V17.1709l-.5859-.5855L4,9.1709V6H24V8h2V6a2,2,0,0,0-2-2Z"/>
+            </svg>
+            <span class="absolute left-1/2 -translate-x-1/2 top-10 bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">Restablecer filtros</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    
 
     <!-- Mensaje de éxito como notificación flotante en la esquina superior derecha -->
     <Transition name="fade-message">
@@ -432,7 +464,11 @@ const saveTransaction = async () => {
       console.warn('transactionForm.value.date era inválido o vacío, usando la fecha actual como predeterminada.');
     }
 
-    const transactionDate = parseLocalDateString(dateToParse);
+    const now = new Date();
+    const horaActual = now.toTimeString().slice(0, 8); // 'HH:mm:ss'
+    const fechaHoraString = `${dateToParse}T${horaActual}`;
+    const transactionDate = new Date(fechaHoraString);
+    // Si por alguna razón es inválida, fallback a parseLocalDateString
     if (isNaN(transactionDate.getTime())) {
       showErrorMessage('Fecha inválida. Por favor, selecciona una fecha válida.');
       return;
@@ -487,12 +523,47 @@ const cancelDeleteTransaction = () => {
   transactionToDeleteId.value = null;
 };
 
+// Filtros de mes, año y cuenta
+const now = new Date();
+const selectedMonth = ref(now.getMonth() + 1);
+const selectedYear = ref(now.getFullYear());
+const selectedAccountId = ref("");
+const months = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
+// Vuelve a la versión anterior: muestra los últimos 5 años desde el año actual, descendente
+const yearOptions = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);
+
+const accountsAndCards = computed(() => {
+  const accs = accounts.value.map(acc => ({ text: acc.name, value: acc.id }));
+  const cards = creditCardsStore.creditCards.map(card => ({ text: card.name ? `💳 ${card.name}` : `💳 ${card.cardType}`, value: card.id }));
+  return [...accs, ...cards];
+});
+
+// Cargar transacciones filtradas según los filtros
+const fetchFilteredTransactions = async () => {
+  if (typeof transactionsStore.fetchTransactionsFiltered === 'function') {
+    await transactionsStore.fetchTransactionsFiltered({
+      month: selectedMonth.value,
+      year: selectedYear.value,
+      accountId: selectedAccountId.value
+    });
+  } else {
+    // fallback: carga todas si el método no existe
+    await transactionsStore.fetchTransactions();
+  }
+};
+
+// Cargar transacciones al cambiar filtros
+watch([selectedMonth, selectedYear, selectedAccountId], fetchFilteredTransactions, { immediate: true });
+
 onMounted(async () => {
   await categoriesStore.fetchCategories();
   await accountsStore.fetchAccounts();
-  await creditCardsStore.fetchCreditCards(); 
-  await transactionsStore.fetchTransactions();
-
+  await creditCardsStore.fetchCreditCards();
+  // Las transacciones ahora se cargan por filtro
+  await fetchFilteredTransactions();
   if (filteredCategories.value.length > 0 && !transactionForm.value.categoryId) {
     transactionForm.value.categoryId = filteredCategories.value[0].id;
   }
@@ -508,6 +579,13 @@ watch(() => transactionForm.value.type, (newType) => {
     transactionForm.value.categoryId = '';
   }
 });
+
+// Función para restablecer los filtros a los valores por defecto
+function resetFilters() {
+  selectedMonth.value = now.getMonth() + 1;
+  selectedYear.value = now.getFullYear();
+  selectedAccountId.value = "";
+}
 </script>
 
 <style scoped>

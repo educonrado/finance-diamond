@@ -66,7 +66,11 @@ const routes: Array<RouteRecordRaw> = [
       requiresAuth: true
     }
   },
-
+  {
+    path: '/loans',
+    name: 'Loans',
+    component: () => import('@/views/LoansView.vue'),
+  },
   {
     path: '/:catchAll(.*)',
     name: 'NotFound',

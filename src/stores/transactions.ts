@@ -9,7 +9,8 @@ import {
   deleteDoc,
   query,
   orderBy,
-  Timestamp
+  Timestamp,
+  where
 } from 'firebase/firestore'
 import type { Transaction } from '../types/Transaction'
 import { useAccountsStore } from './accounts'
@@ -230,6 +231,49 @@ export const useTransactionsStore = defineStore('transactions', {
 
       } catch (err: any) {
         this.error = err.message || 'Error al eliminar la transacción.';
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async fetchTransactionsFiltered({ month, year, accountId }: { month: number, year: number, accountId: string }) {
+      this.isLoading = true;
+      this.error = null;
+      try {
+        await waitForAuth();
+        const path = `${USERS_COLLECTION}/${userUid.value}/${TRANSACTIONS_COLLECTION}`;
+        let q;
+        if (accountId) {
+          // Filtrar por cuenta y año (todas las transacciones de la cuenta en el año)
+          const start = new Date(year, 0, 1, 0, 0, 0);
+          const end = new Date(year + 1, 0, 1, 0, 0, 0);
+          q = query(
+            collection(db, path),
+            orderBy('date', 'desc'),
+            where('accountId', '==', accountId),
+            where('date', '>=', start),
+            where('date', '<', end)
+          );
+        } else {
+          // Filtrar por mes y año (todas las cuentas)
+          const start = new Date(year, month - 1, 1, 0, 0, 0);
+          const end = new Date(year, month, 1, 0, 0, 0);
+          q = query(
+            collection(db, path),
+            orderBy('date', 'desc'),
+            where('date', '>=', start),
+            where('date', '<', end)
+          );
+        }
+        const querySnapshot = await getDocs(q);
+        this.transactions = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          const date = data.date instanceof Timestamp ? data.date.toDate() : new Date(data.date);
+          return { id: doc.id, ...data, date } as Transaction;
+        });
+      } catch (err: any) {
+        this.error = err.message;
+        console.error('Error al cargar transacciones filtradas:', err);
       } finally {
         this.isLoading = false;
       }

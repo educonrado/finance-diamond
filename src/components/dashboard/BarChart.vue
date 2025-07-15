@@ -26,6 +26,7 @@ const props = defineProps<{
     selectedMonth: number
     selectedYear: number
     maxCategories?: number
+    transactionType?: string // 'income' | 'expense' | undefined
 }>()
 
 const chartOptions = {
@@ -109,15 +110,22 @@ const chartData = computed(() => {
 
     const targetDate = new Date(props.selectedYear, props.selectedMonth - 1)
 
-    // Filtrar transacciones del mes seleccionado y tipo 'Gasto'
+    // Filtrar transacciones del mes seleccionado y por tipo
     const filteredTransactions = props.transactions.filter((transaction) => {
         try {
             const transactionDate = normalizeDate(transaction.date)
+            // Determinar tipo de filtro
+            let typeMatch = true
+            if (props.transactionType === 'income') {
+                typeMatch = transaction.type === 'Ingreso'
+            } else if (props.transactionType === 'expense') {
+                typeMatch = transaction.type === 'Gasto'
+            }
             return (
-                transaction.type === 'Gasto' &&
+                typeMatch &&
                 isSameMonth(transactionDate, targetDate) &&
-                transaction.amount > 0 && // Solo montos positivos
-                transaction.categoryId // Asegurar que tenga categoría
+                transaction.amount > 0 &&
+                transaction.categoryId
             )
         } catch (error) {
             console.warn('Error parsing transaction date:', transaction.date)
@@ -148,30 +156,43 @@ const chartData = computed(() => {
     }
 
     // Generar colores dinámicos
-    const generateColors = (count: number) => {
-        const baseColors = [
-            '#EF4444', // red-500
-            '#F97316', // orange-500
-            '#EAB308', // yellow-500
-            '#22C55E', // green-500
-            '#3B82F6', // blue-500
-            '#8B5CF6', // violet-500
-            '#EC4899', // pink-500
-            '#6B7280', // gray-500
-        ]
-
-        return Array.from({ length: count }, (_, i) => {
-            return baseColors[i % baseColors.length]
-        })
+    const generateColors = (count: number, isIncome = false) => {
+        if (isIncome) {
+            // Paleta de verdes y azules suaves para ingresos
+            const incomeColors = [
+                '#34D399', // green-400
+                '#6EE7B7', // green-300
+                '#A7F3D0', // green-200
+                '#60A5FA', // blue-400
+                '#93C5FD', // blue-300
+                '#C7D2FE', // indigo-200
+                '#F0FDFA', // teal-50
+                '#D1FAE5', // emerald-100
+            ]
+            return Array.from({ length: count }, (_, i) => incomeColors[i % incomeColors.length])
+        } else {
+            const baseColors = [
+                '#EF4444', // red-500
+                '#F97316', // orange-500
+                '#EAB308', // yellow-500
+                '#22C55E', // green-500
+                '#3B82F6', // blue-500
+                '#8B5CF6', // violet-500
+                '#EC4899', // pink-500
+                '#6B7280', // gray-500
+            ]
+            return Array.from({ length: count }, (_, i) => baseColors[i % baseColors.length])
+        }
     }
 
+    const isIncomeChart = props.transactionType === 'income'
     const labels = sortedCategories.map(([categoryId]) => {
         const category = categoryMap.value.get(categoryId)
         return category?.name || 'Categoría desconocida'
     })
 
     const data = sortedCategories.map(([, amount]) => amount)
-    const colors = generateColors(sortedCategories.length)
+    const colors = generateColors(sortedCategories.length, isIncomeChart)
 
     return {
         labels,
