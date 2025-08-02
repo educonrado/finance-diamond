@@ -30,25 +30,25 @@
       </button>
     </div>
     <!-- Lista de préstamos activos -->
-    <div class="bg-background-card-light dark:bg-background-card-dark rounded-lg shadow-md p-4 md:p-6 mb-8">
+    <div class="relative bg-background-card-light dark:bg-background-card-dark rounded-lg shadow-md p-4 md:p-6 overflow-x-auto mb-8">
       <h2 class="text-lg font-semibold mb-4 text-text-primary-light dark:text-text-primary-dark">Préstamos Activos</h2>
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-800">
           <tr>
-            <th class="px-4 py-2 text-left">Prestatario</th>
-            <th class="px-4 py-2 text-right">Monto Prestado</th>
-            <th class="px-4 py-2 text-right">Monto Restante</th>
-            <th class="px-4 py-2 text-center">Fecha Compromiso</th>
-            <th class="px-4 py-2 text-center">Acciones</th>
+            <th class="px-2 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Prestatario</th>
+            <th class="px-2 py-3 md:px-6 md:py-3 text-right text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Monto Prestado</th>
+            <th class="px-2 py-3 md:px-6 md:py-3 text-right text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Monto Restante</th>
+            <th class="px-2 py-3 md:px-6 md:py-3 text-center text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider hidden md:table-cell">Fecha Compromiso</th>
+            <th class="px-2 py-3 md:px-6 md:py-3 text-center text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Acciones</th>
           </tr>
         </thead>
-        <tbody>
-          <tr v-for="loan in activeLoans" :key="loan.id" class="border-b hover:bg-gray-50 transition-colors">
-            <td class="px-4 py-2">{{ loan.borrower }}</td>
-            <td class="px-4 py-2 text-right">{{ formatCurrency(loan.amount) }}</td>
-            <td class="px-4 py-2 text-right">{{ formatCurrency(loan.remaining) }}</td>
-            <td class="px-4 py-2 text-center">{{ formatDate(loan.dueDate) }}</td>
-            <td class="px-4 py-2 text-center">
+        <tbody class="bg-background-card-light dark:bg-background-card-dark divide-y divide-gray-200 dark:divide-gray-700">
+          <tr v-for="loan in activeLoans" :key="loan.id">
+            <td class="px-2 py-4 md:px-6 md:py-4 text-xs md:text-sm text-text-primary-light dark:text-text-primary-dark">{{ loan.borrower }}</td>
+            <td class="px-2 py-4 md:px-6 md:py-4 text-right text-xs md:text-sm font-medium">{{ formatCurrency(loan.amount) }}</td>
+            <td class="px-2 py-4 md:px-6 md:py-4 text-right text-xs md:text-sm font-medium">{{ formatCurrency(loan.remaining) }}</td>
+            <td class="px-2 py-4 md:px-6 md:py-4 text-center text-sm text-text-primary-light dark:text-text-primary-dark hidden md:table-cell">{{ formatDate(loan.dueDate) }}</td>
+            <td class="px-2 py-4 md:px-6 md:py-4 whitespace-nowrap text-right text-sm font-medium">
               <button @click="openPaymentModal(loan)" class="text-green-600 hover:underline mr-2">Abono</button>
               <button @click="confirmForgiveLoan(loan)" class="text-yellow-600 hover:underline mr-2">Condonar</button>
               <button @click="confirmDeleteLoan(loan)" class="text-destructive-light dark:text-destructive-dark hover:text-destructive-dark dark:hover:text-destructive-light">
@@ -60,34 +60,34 @@
             </td>
           </tr>
           <tr v-if="activeLoans.length === 0">
-            <td colspan="5" class="px-4 py-2 text-center text-gray-500 italic">No hay préstamos activos.</td>
+            <td colspan="5" class="px-6 py-4 text-center text-xs md:text-sm text-text-secondary-light dark:text-text-secondary-dark italic">No hay préstamos activos.</td>
           </tr>
         </tbody>
       </table>
     </div>
-    <!-- Historial -->
-    <div class="bg-background-card-light dark:bg-background-card-dark rounded-lg shadow-md p-4 md:p-6">
+    <!-- Historial de Préstamos -->
+    <div class="relative bg-background-card-light dark:bg-background-card-dark rounded-lg shadow-md p-4 md:p-6 overflow-x-auto">
       <h2 class="text-lg font-semibold mb-4 text-text-primary-light dark:text-text-primary-dark">Historial de Préstamos</h2>
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-800">
           <tr>
-            <th class="px-4 py-2 text-left">Prestatario</th>
-            <th class="px-4 py-2 text-right">Monto Prestado</th>
-            <th class="px-4 py-2 text-right">Monto Restante</th>
-            <th class="px-4 py-2 text-center">Fecha Compromiso</th>
-            <th class="px-4 py-2 text-center">Estado</th>
+            <th class="px-2 py-3 md:px-6 md:py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Prestatario</th>
+            <th class="px-2 py-3 md:px-6 md:py-3 text-right text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Monto Prestado</th>
+            <th class="px-2 py-3 md:px-6 md:py-3 text-right text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Monto Restante</th>
+            <th class="px-2 py-3 md:px-6 md:py-3 text-center text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Fecha Compromiso</th>
+            <th class="px-2 py-3 md:px-6 md:py-3 text-center text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Estado</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="bg-background-card-light dark:bg-background-card-dark divide-y divide-gray-200 dark:divide-gray-700">
           <tr v-for="loan in historyLoans" :key="loan.id" class="border-b hover:bg-gray-50 transition-colors">
-            <td class="px-4 py-2">{{ loan.borrower }}</td>
-            <td class="px-4 py-2 text-right">{{ formatCurrency(loan.amount) }}</td>
-            <td class="px-4 py-2 text-right">{{ formatCurrency(loan.remaining) }}</td>
-            <td class="px-4 py-2 text-center">{{ formatDate(loan.dueDate) }}</td>
-            <td class="px-4 py-2 text-center">{{ loan.status }}</td>
+            <td class="px-2 py-4 md:px-6 md:py-4 text-xs md:text-sm text-text-primary-light dark:text-text-primary-dark">{{ loan.borrower }}</td>
+            <td class="px-2 py-4 md:px-6 md:py-4 text-right text-xs md:text-sm font-medium">{{ formatCurrency(loan.amount) }}</td>
+            <td class="px-2 py-4 md:px-6 md:py-4 text-right text-xs md:text-sm font-medium">{{ formatCurrency(loan.remaining) }}</td>
+            <td class="px-2 py-4 md:px-6 md:py-4 text-center text-sm text-text-primary-light dark:text-text-primary-dark">{{ formatDate(loan.dueDate) }}</td>
+            <td class="px-2 py-4 md:px-6 md:py-4 text-center text-xs md:text-sm text-text-primary-light dark:text-text-primary-dark">{{ loan.status }}</td>
           </tr>
           <tr v-if="historyLoans.length === 0">
-            <td colspan="5" class="px-4 py-2 text-center text-gray-500 italic">No hay préstamos en el historial.</td>
+            <td colspan="5" class="px-6 py-4 text-center text-xs md:text-sm text-text-secondary-light dark:text-text-secondary-dark italic">No hay préstamos en el historial.</td>
           </tr>
         </tbody>
       </table>

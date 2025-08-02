@@ -28,7 +28,7 @@
           {{ error }}
         </div>
 
-        <!-- Formulario de prueba con email/password -->
+        <!-- Formulario de prueba con email/password 
         <div class="space-y-4 mb-4 p-4 bg-white dark:bg-gray-700 rounded-lg">
           <input
             v-model="emailTest"
@@ -49,7 +49,7 @@
           >
             Login de Prueba
           </button>
-        </div>
+        </div>-->
 
         <!-- Botón de Google Sign In -->
         <div>

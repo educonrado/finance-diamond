@@ -68,8 +68,12 @@ const routes: Array<RouteRecordRaw> = [
   },
   {
     path: '/loans',
-    name: 'Loans',
+    name: 'loans',
     component: () => import('@/views/LoansView.vue'),
+    meta: {
+      title: 'Préstamos',
+      requiresAuth: true
+    }
   },
   {
     path: '/:catchAll(.*)',

@@ -9,19 +9,13 @@
         >Cargando ajustes...</span
       >
     </div>
-    <h1
-      class="text-4xl font-bold mb-6 text-text-primary-light dark:text-text-primary-dark"
-    >
-      Configuración
-    </h1>
-    <p class="text-text-secondary-light dark:text-text-secondary-dark">
-      Ajustes de la aplicación.
-    </p>
+    <CategoriesView />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
 import BillsStackSpinner from '../components/common/BillsStackSpinner.vue';
+import CategoriesView from './CategoriesView.vue';
 const isLoadingGlobal = ref(false); // Cambia a true para probar el overlay
 </script>
